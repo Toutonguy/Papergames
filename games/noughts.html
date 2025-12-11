@@ -203,11 +203,10 @@
     }
 
    function aiTurn() {
-      console.log("Empty squares:", empty);
       const empty = boardArr
         .map((v, i) => v === "" ? i : null)
         .filter(v => v !== null);
-    
+
       if (empty.length === 0) return;
     
       // Strong moves: center + corners
