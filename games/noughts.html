@@ -202,35 +202,42 @@
       setTimeout(aiTurn, 400);
     }
 
-   function aiTurn() {
+    function aiTurn() {
+      // ✅ FIRST: find all empty squares
       const empty = boardArr
         .map((v, i) => v === "" ? i : null)
         .filter(v => v !== null);
-
+    
+      // ✅ If no moves left, stop
       if (empty.length === 0) return;
     
-      // Strong moves: center + corners
+      // ✅ Strong moves: center + corners
       const strong = empty.filter(i =>
         i === 4 || i === 0 || i === 2 || i === 6 || i === 8
       );
     
+      // ✅ Choose move based on difficulty
       const moveIndex = aiChooseMove(strong, empty, difficulty);
     
+      // ✅ Place the computer's move
       boardArr[moveIndex] = "O";
       render();
     
+      // ✅ Check win
       if (checkWin("O")) {
         status.textContent = "Computer wins!";
         disableBoard();
         return;
       }
-    
+
+      // ✅ Check draw
       if (boardArr.every(c => c !== "")) {
         status.textContent = "Draw!";
         return;
       }
     
-      playerTurn = true;            // ✅ give control back to player
+      // ✅ Give turn back to player
+      playerTurn = true;
       status.textContent = "Your turn!";
     }
     // Online
