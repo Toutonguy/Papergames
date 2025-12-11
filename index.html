@@ -10,14 +10,13 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
   <script>
-    /*  
-      ✅ PASTE YOUR FIREBASE CONFIG INSIDE THIS OBJECT  
-      Replace everything inside firebaseConfig with the code Firebase gave you.
-    */
-  
     const firebaseConfig = {
       apiKey: "AIzaSyDc3-2LTaUFsxmCYjgZvKvURFh_MY3lFX4",
       authDomain: "games-html.firebaseapp.com",
+
+      /* ✅ THIS is the only line you needed to add */
+      databaseURL: "https://console.firebase.google.com/project/games-html/database/games-html-default-rtdb/data/~2F",
+
       projectId: "games-html",
       storageBucket: "games-html.firebasestorage.app",
       messagingSenderId: "981720658246",
@@ -26,15 +25,15 @@
     };
 
     // ✅ Initialize Firebase
-    const app = firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // ✅ Test write to your database
+    // ✅ Test write
     db.ref("test").set({
       message: "Hello from GitHub Pages!"
     });
 
-    // ✅ Test read from your database
+    // ✅ Test read
     db.ref("test").on("value", snapshot => {
       console.log("Firebase says:", snapshot.val());
     });
