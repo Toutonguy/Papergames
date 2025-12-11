@@ -147,16 +147,33 @@
       });
     }
 
-    function handleClick(i) {
+    function handleAIClick(i) {
+      if (!playerTurn) return;
       if (boardArr[i] !== "") return;
-
-      if (mode === "local") {
-        handleLocalClick(i);
-      } else if (mode === "ai") {
-        handleAIClick(i);
-      } else if (mode === "online") {
-        handleOnlineClick(i);
+    
+      // ✅ Update board state FIRST
+      boardArr[i] = "X";
+      render();
+    
+      // ✅ Check if player won
+      if (checkWin("X")) {
+        status.textContent = "You win!";
+        disableBoard();
+        return;
       }
+    
+      // ✅ Check draw
+      if (boardArr.every(c => c !== "")) {
+        status.textContent = "Draw!";
+        return;
+      }
+    
+      // ✅ Lock input BEFORE AI moves
+      playerTurn = false;
+      status.textContent = "Computer thinking...";
+    
+      // ✅ AI now sees the correct board state
+      setTimeout(aiTurn, 400);
     }
 
     // Local PvP
