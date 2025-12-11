@@ -54,6 +54,7 @@
 
   <script>
     // Parse query params
+    let playerTurn = true;
     const params = new URLSearchParams(window.location.search);
     const mode = params.get("mode") || "local";        // local | ai | online
     const difficulty = params.get("difficulty") || "medium";
@@ -178,48 +179,60 @@
 
     // Vs AI
     function handleAIClick(i) {
+      if (!playerTurn) return;      // ✅ prevents double moves
       if (boardArr[i] !== "") return;
+    
       boardArr[i] = "X";
       render();
-
+    
       if (checkWin("X")) {
         status.textContent = "You win!";
         disableBoard();
         return;
       }
+    
       if (boardArr.every(c => c !== "")) {
         status.textContent = "Draw!";
         return;
       }
-
+    
+      playerTurn = false;           // ✅ lock player input
       status.textContent = "Computer thinking...";
+    
       setTimeout(aiTurn, 400);
     }
 
-    function aiTurn() {
-      const empty = boardArr.map((v, i) => v === "" ? i : null).filter(v => v !== null);
+   function aiTurn() {
+      const empty = boardArr
+        .map((v, i) => v === "" ? i : null)
+        .filter(v => v !== null);
+    
       if (empty.length === 0) return;
-
-      // Strong moves: center, then corners
-      const strong = empty.filter(i => i === 4 || i === 0 || i === 2 || i === 6 || i === 8);
+    
+      // Strong moves: center + corners
+      const strong = empty.filter(i =>
+        i === 4 || i === 0 || i === 2 || i === 6 || i === 8
+      );
+    
       const moveIndex = aiChooseMove(strong, empty, difficulty);
-
+    
       boardArr[moveIndex] = "O";
       render();
-
+    
       if (checkWin("O")) {
         status.textContent = "Computer wins!";
         disableBoard();
         return;
       }
+    
       if (boardArr.every(c => c !== "")) {
         status.textContent = "Draw!";
         return;
       }
-
+    
+      playerTurn = true;            // ✅ give control back to player
       status.textContent = "Your turn!";
     }
-
     // Online
     function handleOnlineClick(i) {
       if (!isMyTurn) return;
