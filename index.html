@@ -1,47 +1,79 @@
-
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>My Firebase Test</title>
+  <title>Game Hub</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    .game-list {
+      max-width: 500px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    .game {
+      background: white;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .game h2 {
+      margin: 0 0 10px;
+    }
+    .game button {
+      margin: 3px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Game Hub</h1>
 
-  <!-- Load Firebase libraries -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  <div class="game-list">
+    <div class="game">
+      <h2>Noughts and Crosses</h2>
+      <button onclick="startGame('noughts.html','local')">Same Computer PvP</button>
+      <button onclick="startGame('noughts.html','ai','easy')">Vs Computer (Easy)</button>
+      <button onclick="startGame('noughts.html','ai','medium')">Vs Computer (Medium)</button>
+      <button onclick="startGame('noughts.html','ai','hard')">Vs Computer (Hard)</button>
+      <button onclick="startGame('noughts.html','online')">Online PvP</button>
+    </div>
+
+    <div class="game">
+      <h2>Hangman</h2>
+      <button disabled>Coming soon</button>
+    </div>
+
+    <div class="game">
+      <h2>Battleships</h2>
+      <button disabled>Coming soon</button>
+    </div>
+
+    <div class="game">
+      <h2>Dots and Boxes</h2>
+      <button disabled>Coming soon</button>
+    </div>
+  </div>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyDc3-2LTaUFsxmCYjgZvKvURFh_MY3lFX4",
-      authDomain: "games-html.firebaseapp.com",
-
-      /* ✅ THIS is the only line you needed to add */
-      databaseURL: "https://games-html-default-rtdb.firebaseio.com",
-
-      projectId: "games-html",
-      storageBucket: "games-html.firebasestorage.app",
-      messagingSenderId: "981720658246",
-      appId: "1:981720658246:web:02c98b33e7885961aff547",
-      measurementId: "G-YHV59EV8E7"
-    };
-
-    // ✅ Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    // ✅ Test write
-    db.ref("test").set({
-      message: "Hello from GitHub Pages!"
-    });
-
-    // ✅ Test read
-    db.ref("test").on("value", snapshot => {
-      console.log("Firebase says:", snapshot.val());
-    });
+    function startGame(file, mode, difficulty) {
+      let url = "games/" + file + "?mode=" + encodeURIComponent(mode);
+      if (difficulty) {
+        url += "&difficulty=" + encodeURIComponent(difficulty);
+      }
+      window.location.href = url;
+    }
   </script>
-</head>
-
-<body>
-  <h1>Firebase Connection Test</h1>
-  <p>If everything is working, open your browser console to see messages from Firebase.</p>
 </body>
 </html>
