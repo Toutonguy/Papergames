@@ -201,42 +201,126 @@
     
       setTimeout(aiTurn, 400);
     }
-
-    function aiTurn() {
-      // ✅ FIRST: find all empty squares
+    function findWinningMove(symbol) {
+      const wins = [
+        [0,1,2],[3,4,5],[6,7,8],
+        [0,3,6],[1,4,7],[2,5,8],
+        [0,4,8],[2,4,6]
+      ];
+    
+      for (const combo of wins) {
+        const [a, b, c] = combo;
+        const line = [boardArr[a], boardArr[b], boardArr[c]];
+    
+        // If two are the symbol and one is empty → winning/blocking move
+        if (line.filter(v => v === symbol).length === 2 &&
+            line.filter(v => v === "").length === 1) {
+          return combo[line.indexOf("")];
+        }
+      }
+      return null;
+    }
+    function findForkMove(symbol) {
       const empty = boardArr
         .map((v, i) => v === "" ? i : null)
         .filter(v => v !== null);
     
-      // ✅ If no moves left, stop
-      if (empty.length === 0) return;
+      for (const move of empty) {
+        // Try placing symbol temporarily
+        boardArr[move] = symbol;
     
-      // ✅ Strong moves: center + corners
-      const strong = empty.filter(i =>
-        i === 4 || i === 0 || i === 2 || i === 6 || i === 8
-      );
+        let winningMoves = 0;
+        const wins = [
+          [0,1,2],[3,4,5],[6,7,8],
+          [0,3,6],[1,4,7],[2,5,8],
+          [0,4,8],[2,4,6]
+        ];
     
-      // ✅ Choose move based on difficulty
-      const moveIndex = aiChooseMove(strong, empty, difficulty);
+        for (const combo of wins) {
+          const [a, b, c] = combo;
+          const line = [boardArr[a], boardArr[b], boardArr[c]];
+          if (line.filter(v => v === symbol).length === 2 &&
+              line.filter(v => v === "").length === 1) {
+            winningMoves++;
+          }
+        }
     
-      // ✅ Place the computer's move
+        // Undo move
+        boardArr[move] = "";
+    
+        if (winningMoves >= 2) return move;
+      }
+    
+      return null;
+    }
+    function easyMove() {
+      const empty = boardArr
+        .map((v, i) => v === "" ? i : null)
+        .filter(v => v !== null);
+    
+      return empty[Math.floor(Math.random() * empty.length)];
+    }
+    function mediumMove() {
+      // 1. Block player win
+      const block = findWinningMove("X");
+      if (block !== null) return block;
+    
+      // 2. Otherwise random
+      return easyMove();
+    }
+    function hardMove() {
+      // 1. Win if possible
+      const win = findWinningMove("O");
+      if (win !== null) return win;
+    
+      // 2. Block player win
+      const block = findWinningMove("X");
+      if (block !== null) return block;
+    
+      // 3. Create a fork
+      const fork = findForkMove("O");
+      if (fork !== null) return fork;
+    
+      // 4. Block player's fork
+      const blockFork = findForkMove("X");
+      if (blockFork !== null) return blockFork;
+    
+      // 5. Take centre
+      if (boardArr[4] === "") return 4;
+    
+      // 6. Take a corner
+      const corners = [0, 2, 6, 8].filter(i => boardArr[i] === "");
+      if (corners.length > 0) return corners[Math.floor(Math.random() * corners.length)];
+    
+      // 7. Otherwise random
+      return easyMove();
+    }
+
+    function aiTurn() {
+      let moveIndex;
+    
+      if (difficulty === "easy") {
+        moveIndex = easyMove();
+      } else if (difficulty === "medium") {
+        moveIndex = mediumMove();
+      } else {
+        moveIndex = hardMove();
+      }
+    
       boardArr[moveIndex] = "O";
       render();
     
-      // ✅ Check win
       if (checkWin("O")) {
         status.textContent = "Computer wins!";
         disableBoard();
         return;
       }
 
-      // ✅ Check draw
       if (boardArr.every(c => c !== "")) {
         status.textContent = "Draw!";
         return;
       }
     
-      // ✅ Give turn back to player
       playerTurn = true;
       status.textContent = "Your turn!";
     }
