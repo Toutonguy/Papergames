@@ -1,1 +1,276 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Noughts and Crosses</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f2f2f2;
+    }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-gap: 10px;
+      justify-content: center;
+      margin-top: 40px;
+    }
+    .cell {
+      width: 100px;
+      height: 100px;
+      background: white;
+      border-radius: 10px;
+      font-size: 60px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    #info {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    a.back {
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <a href="../index.html" class="back">← Back</a>
+  <h1>Noughts and Crosses</h1>
+  <p id="status">Loading...</p>
+  <div id="info"></div>
+  <div id="board"></div>
 
+  <!-- Shared scripts -->
+  <script src="../scripts/ai.html"></script>
+  <script src="../scripts/firebase-config.html"></script>
+  <script src="../scripts/online.html"></script>
+
+  <script>
+    // Parse query params
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get("mode") || "local";        // local | ai | online
+    const difficulty = params.get("difficulty") || "medium";
+
+    const boardArr = ["", "", "", "", "", "", "", "", ""];
+    const boardDiv = document.getElementById("board");
+    const status = document.getElementById("status");
+    const info = document.getElementById("info");
+
+    // For online mode
+    const GAME_NAME = "noughts";
+    let roomId = null;
+    let mySymbol = "X";
+    let currentTurn = "X";
+    let isMyTurn = true;
+
+    // Create board UI
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement("div");
+      cell.classList.add("cell");
+      cell.dataset.index = i;
+      cell.addEventListener("click", () => handleClick(i));
+      boardDiv.appendChild(cell);
+    }
+
+    if (mode === "local") {
+      initLocal();
+    } else if (mode === "ai") {
+      initVsAI();
+    } else if (mode === "online") {
+      initOnline();
+    } else {
+      status.textContent = "Unknown mode.";
+    }
+
+    function initLocal() {
+      status.textContent = "Local PvP: X to move";
+      info.textContent = "";
+    }
+
+    function initVsAI() {
+      status.textContent = "Vs Computer (" + difficulty + "): Your turn (X)";
+      info.textContent = "Computer is O";
+    }
+
+    async function initOnline() {
+      // If no roomId in URL, create one and show it
+      const urlRoom = params.get("room");
+      if (!urlRoom) {
+        roomId = createRoom(GAME_NAME);
+        mySymbol = "X";
+        currentTurn = "X";
+        isMyTurn = true;
+        status.textContent = "Online PvP: You are X. Share this room ID:";
+        info.textContent = "Room ID: " + roomId + "\nAdd ?room=" + roomId + " to the URL for Player 2.";
+      } else {
+        roomId = urlRoom;
+        const snap = await joinRoom(GAME_NAME, roomId);
+        if (!snap.exists()) {
+          status.textContent = "Room not found.";
+          return;
+        }
+        mySymbol = "O";
+        currentTurn = "X";
+        isMyTurn = false;
+        status.textContent = "Online PvP: You are O. Waiting for X...";
+        info.textContent = "Room ID: " + roomId;
+      }
+
+      // Listen for moves
+      onMove(GAME_NAME, roomId, move => {
+        const idx = move.index;
+        const symbol = move.symbol;
+        if (boardArr[idx] === "") {
+          boardArr[idx] = symbol;
+          render();
+          if (checkWin(symbol)) {
+            status.textContent = symbol + " wins!";
+            disableBoard();
+            return;
+          }
+          if (boardArr.every(c => c !== "")) {
+            status.textContent = "Draw!";
+            return;
+          }
+          currentTurn = (symbol === "X") ? "O" : "X";
+          isMyTurn = (currentTurn === mySymbol);
+          status.textContent = "Online: " + currentTurn + " to move" + (isMyTurn ? " (your turn)" : "");
+        }
+      });
+    }
+
+    function handleClick(i) {
+      if (boardArr[i] !== "") return;
+
+      if (mode === "local") {
+        handleLocalClick(i);
+      } else if (mode === "ai") {
+        handleAIClick(i);
+      } else if (mode === "online") {
+        handleOnlineClick(i);
+      }
+    }
+
+    // Local PvP
+    function handleLocalClick(i) {
+      const turn = (boardArr.filter(x => x !== "").length % 2 === 0) ? "X" : "Y".replace("Y","O");
+      boardArr[i] = turn;
+      render();
+
+      if (checkWin(turn)) {
+        status.textContent = turn + " wins!";
+        disableBoard();
+        return;
+      }
+      if (boardArr.every(c => c !== "")) {
+        status.textContent = "Draw!";
+        return;
+      }
+      status.textContent = "Local PvP: " + (turn === "X" ? "O" : "X") + " to move";
+    }
+
+    // Vs AI
+    function handleAIClick(i) {
+      if (boardArr[i] !== "") return;
+      boardArr[i] = "X";
+      render();
+
+      if (checkWin("X")) {
+        status.textContent = "You win!";
+        disableBoard();
+        return;
+      }
+      if (boardArr.every(c => c !== "")) {
+        status.textContent = "Draw!";
+        return;
+      }
+
+      status.textContent = "Computer thinking...";
+      setTimeout(aiTurn, 400);
+    }
+
+    function aiTurn() {
+      const empty = boardArr.map((v, i) => v === "" ? i : null).filter(v => v !== null);
+      if (empty.length === 0) return;
+
+      // Strong moves: center, then corners
+      const strong = empty.filter(i => i === 4 || i === 0 || i === 2 || i === 6 || i === 8);
+      const moveIndex = aiChooseMove(strong, empty, difficulty);
+
+      boardArr[moveIndex] = "O";
+      render();
+
+      if (checkWin("O")) {
+        status.textContent = "Computer wins!";
+        disableBoard();
+        return;
+      }
+      if (boardArr.every(c => c !== "")) {
+        status.textContent = "Draw!";
+        return;
+      }
+
+      status.textContent = "Your turn!";
+    }
+
+    // Online
+    function handleOnlineClick(i) {
+      if (!isMyTurn) return;
+      if (!roomId) return;
+      if (boardArr[i] !== "") return;
+
+      boardArr[i] = mySymbol;
+      render();
+      sendMove(GAME_NAME, roomId, { index: i, symbol: mySymbol });
+
+      if (checkWin(mySymbol)) {
+        status.textContent = mySymbol + " wins!";
+        disableBoard();
+        return;
+      }
+      if (boardArr.every(c => c !== "")) {
+        status.textContent = "Draw!";
+        return;
+      }
+
+      currentTurn = (mySymbol === "X") ? "O" : "X";
+      isMyTurn = false;
+      status.textContent = "Online: " + currentTurn + " to move (waiting...)";
+    }
+
+    function render() {
+      document.querySelectorAll(".cell").forEach(cell => {
+        const i = cell.dataset.index;
+        cell.textContent = boardArr[i];
+      });
+    }
+
+    function checkWin(symbol) {
+      const wins = [
+        [0,1,2],[3,4,5],[6,7,8],
+        [0,3,6],[1,4,7],[2,5,8],
+        [0,4,8],[2,4,6]
+      ];
+      return wins.some(combo =>
+        combo.every(i => boardArr[i] === symbol)
+      );
+    }
+
+    function disableBoard() {
+      document.querySelectorAll(".cell").forEach(c => {
+        c.style.pointerEvents = "none";
+      });
+    }
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
