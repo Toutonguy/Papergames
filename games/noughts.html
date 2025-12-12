@@ -613,16 +613,7 @@
       } else if (isDraw(board)) {
         showGameOver("draw");
       }
-        }
-        cell.addEventListener("click", () => {
-      const index = parseInt(cell.dataset.index);
-    
-      if (mode === "online") {
-        handleOnlineClick(index);
-      } else {
-        handleLocalClick(index);
-      }
-    });
+    }
   </script>
 </body>
 </html>
