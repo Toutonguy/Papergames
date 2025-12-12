@@ -76,8 +76,10 @@
     const boardDiv = document.getElementById("board");
     const status = document.getElementById("status");
     const info = document.getElementById("info");
+    // Hide "Change Difficulty" button in PvP or Online
     if (mode !== "ai") {
-      document.querySelector('button[onclick="changeDifficulty()"]').style.display = "none";
+      const diffBtn = document.querySelector('button[onclick="changeDifficulty()"]');
+      if (diffBtn) diffBtn.style.display = "none";
     }
 
     // For online mode
