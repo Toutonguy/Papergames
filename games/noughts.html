@@ -221,16 +221,14 @@
 
     // Local PvP
     function handleLocalClick(i) {
-  // ✅ Prevent clicking filled squares
+      // ✅ Prevent clicking filled squares
       if (boardArr[i] !== "") return;
     
-      if (gameOver) return; // if you have a gameOver flag
-    
-      // Place symbol
+      // ✅ Place symbol
       boardArr[i] = currentTurn;
       updateBoard();
     
-      // Check win/draw
+      // ✅ Check win
       if (checkWin(currentTurn)) {
         status.textContent = currentTurn + " wins!";
         disableBoard();
@@ -238,6 +236,7 @@
         return;
       }
     
+      // ✅ Check draw
       if (boardArr.every(c => c !== "")) {
         status.textContent = "Draw!";
         disableBoard();
@@ -245,11 +244,10 @@
         return;
       }
     
-      // Switch turn
+      // ✅ Switch turn
       currentTurn = currentTurn === "X" ? "O" : "X";
       status.textContent = currentTurn + "'s turn";
     }
-
     // Vs AI
     function handleAIClick(i) {
       if (!playerTurn) return;      // ✅ prevents double moves
