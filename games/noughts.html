@@ -421,7 +421,7 @@
       if (boardArr[i] !== "") return;
 
       boardArr[i] = mySymbol;
-      render();
+      renderLocal();
       sendMove(GAME_NAME, roomId, { index: i, symbol: mySymbol });
 
       if (checkWin(mySymbol)) {
@@ -569,29 +569,7 @@
       }
       renderLocal();
     }
-    function handleOnlineClick(index) {
-      if (!isMyTurn) return;
-      if (board[index] !== "") return;
     
-      board[index] = mySymbol;
-      renderLocal();
-    
-      const nextTurn = mySymbol === "X" ? "O" : "X";
-    
-      roomRef.update({
-        board: board,
-        turn: nextTurn
-      });
-    
-      isMyTurn = false;
-    
-      const winner = checkWin(board);
-      if (winner) {
-        showGameOver(winner);
-      } else if (isDraw(board)) {
-        showGameOver("draw");
-      }
-    }
   </script>
 </body>
 </html>
