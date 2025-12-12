@@ -63,9 +63,9 @@
 
   <script>
     // Parse query params
-    let playerTurn = true;
+    let playerTurn = (start === "player");
     const params = new URLSearchParams(window.location.search);
-    const params = new URLSearchParams(window.location.search);
+    
     const start = params.get("start"); // "player" or "computer"
     const mode = params.get("mode") || "local";        // local | ai | online
     const difficulty = params.get("difficulty") || "medium";
@@ -81,7 +81,7 @@
     let mySymbol = "X";
     let currentTurn = "X";
     let isMyTurn = true;
-    let playerTurn = (start === "player");
+    
     
 
     // Create board UI
@@ -111,7 +111,10 @@
       status.textContent = "Unknown mode.";
     }
     if (start === "computer") {
+      status.textContent = "Computer starts!";
       aiTurn();
+    } else {
+      status.textContent = "Your turn!";
     }
 
     function initLocal() {
