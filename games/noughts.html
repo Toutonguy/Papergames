@@ -51,6 +51,23 @@
     <button onclick="changeDifficulty()">Change Difficulty</button>
     <button onclick="goHome()">Home</button>
   </div>
+    <div id="onlineSetup" style="display:none; text-align:center; margin-top:20px;">
+    <p style="font-size:18px; margin-bottom:10px;">
+      Enter a 4‑digit code to connect with another player.
+    </p>
+  
+    <input 
+      id="onlineCodeInput" 
+      type="text" 
+      maxlength="4" 
+      placeholder="1234"
+      style="font-size:20px; width:80px; text-align:center;"
+    >
+  
+    <button id="onlineStartBtn" style="margin-left:10px; font-size:16px;">
+      Start Online Game
+    </button>
+  </div>
 
   <!-- Shared scripts -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -69,6 +86,10 @@
     const start = params.get("start"); // "player" or "computer"
     const mode = params.get("mode") || "local";
     const difficulty = params.get("difficulty") || "medium";
+    if (mode === "online") {
+      document.getElementById("onlineSetup").style.display = "block";
+    }
+    
 
     let playerTurn = (start === "player");
 
@@ -88,7 +109,17 @@
     let mySymbol = "X";
     let currentTurn = "X";
     let isMyTurn = true;
+    document.getElementById("onlineStartBtn").addEventListener("click", () => {
+      const code = document.getElementById("onlineCodeInput").value.trim();
+    document.getElementById("onlineSetup").style.display = "none";Make it 
     
+      if (code.length !== 4 || isNaN(code)) {
+        alert("Please enter a valid 4‑digit code.");
+        return;
+      }
+    
+      startOnlineGame(code);
+    });
     
 
     // Create board UI
