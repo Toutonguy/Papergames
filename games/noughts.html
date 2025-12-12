@@ -226,7 +226,7 @@
     
       // ✅ Place symbol
       boardArr[i] = currentTurn;
-      render();
+      renderLocal();
     
       // ✅ Check win
       if (checkWin(currentTurn)) {
@@ -430,7 +430,7 @@
       status.textContent = "Online: " + currentTurn + " to move (waiting...)";
     }
 
-    function render() {
+    function renderLocal() {
       document.querySelectorAll(".cell").forEach(cell => {
         const i = cell.dataset.index;
         cell.textContent = boardArr[i];
