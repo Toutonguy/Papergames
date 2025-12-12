@@ -285,7 +285,7 @@
       if (boardArr[i] !== "") return;
     
       boardArr[i] = "X";
-      render();
+      Localrender();
     
       if (checkWin("X")) {
         status.textContent = "You win!";
