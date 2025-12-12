@@ -139,6 +139,7 @@
           if (checkWin(symbol)) {
             status.textContent = symbol + " wins!";
             disableBoard();
+            showGameOverMenu();
             return;
           }
           if (boardArr.every(c => c !== "")) {
@@ -164,6 +165,7 @@
       if (checkWin("X")) {
         status.textContent = "You win!";
         disableBoard();
+        showGameOverMenu();
         return;
       }
     
@@ -190,6 +192,8 @@
       if (checkWin(turn)) {
         status.textContent = turn + " wins!";
         disableBoard();
+        showGameOverMenu();
+    
         return;
       }
       if (boardArr.every(c => c !== "")) {
@@ -210,6 +214,7 @@
       if (checkWin("X")) {
         status.textContent = "You win!";
         disableBoard();
+        showGameOverMenu();
         return;
       }
     
@@ -335,6 +340,7 @@
       if (checkWin("O")) {
         status.textContent = "Computer wins!";
         disableBoard();
+        showGameOverMenu();
         return;
       }
 
@@ -359,6 +365,7 @@
       if (checkWin(mySymbol)) {
         status.textContent = mySymbol + " wins!";
         disableBoard();
+        showGameOverMenu();
         return;
       }
       if (boardArr.every(c => c !== "")) {
@@ -393,6 +400,21 @@
       document.querySelectorAll(".cell").forEach(c => {
         c.style.pointerEvents = "none";
       });
+    }
+    function showGameOverMenu() {
+      document.getElementById("gameOverMenu").style.display = "block";
+    }
+    
+    function playAgain() {
+      location.reload();
+    }
+    
+    function changeDifficulty() {
+      location.href = "../difficulty.html";
+    }
+    
+    function goHome() {
+      location.href = "../index.html";
     }
 
     // Initial render
