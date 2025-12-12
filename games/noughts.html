@@ -76,6 +76,9 @@
     const boardDiv = document.getElementById("board");
     const status = document.getElementById("status");
     const info = document.getElementById("info");
+    if (mode !== "ai") {
+      document.querySelector('button[onclick="changeDifficulty()"]').style.display = "none";
+    }
 
     // For online mode
     const GAME_NAME = "noughts";
