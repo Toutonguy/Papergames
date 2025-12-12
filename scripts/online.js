@@ -1,3 +1,7 @@
+src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js">
+src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js">
+
+src="../scripts/firebase-config.js">
 function createRoom(gameName) {
   const roomId = Math.random().toString(36).substring(2, 8);
   const ref = db.ref(`games/${gameName}/rooms/${roomId}`);
