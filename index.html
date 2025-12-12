@@ -42,12 +42,19 @@
 
   <div class="game-list">
     <div class="game">
-      <h2>Noughts and Crosses</h2>
-      <button onclick="startGame('noughts.html','local')">Same Computer PvP</button>
-      <button onclick="startGame('noughts.html','ai','easy')">Vs Computer (Easy)</button>
-      <button onclick="startGame('noughts.html','ai','medium')">Vs Computer (Medium)</button>
-      <button onclick="startGame('noughts.html','ai','hard')">Vs Computer (Hard)</button>
-      <button onclick="startGame('noughts.html','online')">Online PvP</button>
+      <h2>Noughts & Crosses</h2>
+
+      <button onclick="location.href='games/noughts.html?mode=local'">
+        Same‑Computer PvP
+      </button>
+      
+      <button onclick="location.href='online.html'">
+        Online PvP
+      </button>
+      
+      <button onclick="location.href='difficulty.html'">
+        Against the Computer
+      </button>
     </div>
 
     <div class="game">
