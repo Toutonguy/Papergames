@@ -387,6 +387,8 @@
       }
       if (boardArr.every(c => c !== "")) {
         status.textContent = "Draw!";
+        disableBoard();
+        showGameOverMenu();
         return;
       }
 
