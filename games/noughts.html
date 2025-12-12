@@ -63,12 +63,14 @@
 
   <script>
     // Parse query params
-    let playerTurn = (start === "player");
+    // Parse query params
     const params = new URLSearchParams(window.location.search);
     
     const start = params.get("start"); // "player" or "computer"
-    const mode = params.get("mode") || "local";        // local | ai | online
+    const mode = params.get("mode") || "local";
     const difficulty = params.get("difficulty") || "medium";
+
+    let playerTurn = (start === "player");
 
     const boardArr = ["", "", "", "", "", "", "", "", ""];
     const boardDiv = document.getElementById("board");
