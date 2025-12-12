@@ -221,29 +221,7 @@
       });
     }
 
-    function handleAIClick(i) {
-      if (!playerTurn) return;
-      if (boardArr[i] !== "") return;
     
-      // ✅ Update board state FIRST
-      boardArr[i] = "X";
-      renderLocal();
-    
-      // ✅ Check if player won
-      if (checkWin("X")) {
-        status.textContent = "You win!";
-        disableBoard();
-        showGameOverMenu();
-        return;
-      }
-    
-      // ✅ Check draw
-      if (boardArr.every(c => c !== "")) {
-        status.textContent = "Draw!";
-        disableBoard();
-        showGameOverMenu();
-        return;
-      }
     
       // ✅ Lock input BEFORE AI moves
       playerTurn = false;
