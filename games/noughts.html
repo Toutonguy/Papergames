@@ -187,6 +187,8 @@
       // ✅ Check draw
       if (boardArr.every(c => c !== "")) {
         status.textContent = "Draw!";
+        disableBoard();
+        showGameOverMenu();
         return;
       }
     
@@ -213,6 +215,9 @@
       }
       if (boardArr.every(c => c !== "")) {
         status.textContent = "Draw!";
+        disableBoard();
+        showGameOverMenu();
+        
         return;
       }
       status.textContent = "Local PvP: " + (turn === "X" ? "O" : "X") + " to move";
@@ -235,6 +240,8 @@
     
       if (boardArr.every(c => c !== "")) {
         status.textContent = "Draw!";
+        disableBoard();
+        showGameOverMenu();
         return;
       }
     
