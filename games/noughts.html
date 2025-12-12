@@ -221,25 +221,33 @@
 
     // Local PvP
     function handleLocalClick(i) {
-      const turn = (boardArr.filter(x => x !== "").length % 2 === 0) ? "X" : "Y".replace("Y","O");
-      boardArr[i] = turn;
-      render();
-
-      if (checkWin(turn)) {
-        status.textContent = turn + " wins!";
+  // ✅ Prevent clicking filled squares
+      if (boardArr[i] !== "") return;
+    
+      if (gameOver) return; // if you have a gameOver flag
+    
+      // Place symbol
+      boardArr[i] = currentTurn;
+      updateBoard();
+    
+      // Check win/draw
+      if (checkWin(currentTurn)) {
+        status.textContent = currentTurn + " wins!";
         disableBoard();
         showGameOverMenu();
-    
         return;
       }
+    
       if (boardArr.every(c => c !== "")) {
         status.textContent = "Draw!";
         disableBoard();
         showGameOverMenu();
-        
         return;
       }
-      status.textContent = "Local PvP: " + (turn === "X" ? "O" : "X") + " to move";
+    
+      // Switch turn
+      currentTurn = currentTurn === "X" ? "O" : "X";
+      status.textContent = currentTurn + "'s turn";
     }
 
     // Vs AI
