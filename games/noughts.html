@@ -107,16 +107,19 @@
       initLocal();
     } else if (mode === "ai") {
       initVsAI();
+    
+      // ✅ Only trigger AI AFTER initVsAI has finished
+      if (start === "computer") {
+        status.textContent = "Computer starts!";
+        aiTurn();
+      } else {
+        status.textContent = "Your turn!";
+      }
+    
     } else if (mode === "online") {
       initOnline();
     } else {
       status.textContent = "Unknown mode.";
-    }
-    if (start === "computer") {
-      status.textContent = "Computer starts!";
-      aiTurn();
-    } else {
-      status.textContent = "Your turn!";
     }
 
     function initLocal() {
