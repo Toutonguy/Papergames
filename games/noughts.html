@@ -86,7 +86,15 @@
       const cell = document.createElement("div");
       cell.classList.add("cell");
       cell.dataset.index = i;
-      cell.addEventListener("click", () => handleAIClick(i));
+    
+      if (mode === "ai") {
+        cell.addEventListener("click", () => handleAIClick(i));
+      } else if (mode === "local") {
+        cell.addEventListener("click", () => handleLocalClick(i));
+      } else if (mode === "online") {
+        cell.addEventListener("click", () => handleOnlineClick(i));
+      }
+    
       boardDiv.appendChild(cell);
     }
 
