@@ -1,17 +1,56 @@
-<h1>Select Difficulty</h1>
+<h1>Select AI Difficulty</h1>
 
-<button onclick="location.href='games/noughts.html?mode=ai&difficulty=easy'">
-  Easy
-</button>
+<!-- Difficulty buttons -->
+<div id="difficultySelect">
+  <button onclick="selectDifficulty('easy')">Easy</button>
+  <button onclick="selectDifficulty('medium')">Medium</button>
+  <button onclick="selectDifficulty('hard')">Hard</button>
+</div>
 
-<button onclick="location.href='games/noughts.html?mode=ai&difficulty=medium'">
-  Medium
-</button>
+<h2>Who Starts?</h2>
 
-<button onclick="location.href='games/noughts.html?mode=ai&difficulty=hard'">
-  Hard
-</button>
+<!-- Starting player buttons -->
+<div id="starterSelect">
+  <button onclick="selectStarter('player')">Player 1</button>
+  <button onclick="selectStarter('computer')">Computer</button>
+  <button onclick="selectStarter('random')">Random</button>
+</div>
 
-<button onclick="location.href='index.html'">
-  Back
-</button>
+<!-- Start button -->
+<button id="startBtn" disabled onclick="startGame()">Start Game</button>
+
+<!-- Back button -->
+<button onclick="location.href='index.html'">Back</button>
+
+<script>
+  let chosenDifficulty = null;
+  let chosenStarter = null;
+
+  function selectDifficulty(diff) {
+    chosenDifficulty = diff;
+    updateStartButton();
+  }
+
+  function selectStarter(starter) {
+    chosenStarter = starter;
+    updateStartButton();
+  }
+
+  function updateStartButton() {
+    const btn = document.getElementById("startBtn");
+    btn.disabled = !(chosenDifficulty && chosenStarter);
+  }
+
+  function startGame() {
+    let starter = chosenStarter;
+
+    // Handle random start
+    if (starter === "random") {
+      starter = Math.random() < 0.5 ? "player" : "computer";
+    }
+
+    // Build URL
+    const url = `games/noughts.html?mode=ai&difficulty=${chosenDifficulty}&start=${starter}`;
+    location.href = url;
+  }
+</script>
