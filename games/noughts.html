@@ -109,9 +109,12 @@
     let mySymbol = "X";
     let currentTurn = "X";
     let isMyTurn = true;
-    document.getElementById("onlineStartBtn").addEventListener("click", () => {
-      const code = document.getElementById("onlineCodeInput").value.trim();
-    document.getElementById("onlineSetup").style.display = "none";
+    if (mode==="online"){
+      document.getElementById("onlineSetup").style.display = "block";
+
+      document.getElementById("onlineStartBtn").addEventListener("click", () => {
+        const code = document.getElementById("onlineCodeInput").value.trim();
+      document.getElementById("onlineSetup").style.display = "none";
     
       if (code.length !== 4 || isNaN(code)) {
         alert("Please enter a valid 4‑digit code.");
@@ -198,7 +201,7 @@
         const symbol = move.symbol;
         if (boardArr[idx] === "") {
           boardArr[idx] = symbol;
-          render();
+          renderLocal();
           if (checkWin(symbol)) {
             status.textContent = symbol + " wins!";
             disableBoard();
@@ -224,7 +227,7 @@
     
       // ✅ Update board state FIRST
       boardArr[i] = "X";
-      render();
+      renderLocal();
     
       // ✅ Check if player won
       if (checkWin("X")) {
@@ -502,6 +505,124 @@
 
     // Initial render
     renderLocal();
+    function startOnlineGame(code) {
+      roomId = code;
+      const db = firebase.database();
+      roomRef = db.ref("rooms/" + roomId);
+    
+      roomRef.get().then(snapshot => {
+        const data = snapshot.val();
+    
+        if (!data) {
+          createRoomAsHost();
+        } else {
+          joinRoomAsGuest(data);
+        }
+      }).catch(err => {
+        console.error(err);
+        alert("Error connecting to online game.");
+      
+      });
+    }
+    function createRoomAsHost() {
+      const emptyBoard = ["", "", "", "", "", "", "", "", ""];
+    
+      roomRef.set({
+        board: emptyBoard,
+        turn: null,
+        started: false,
+        players: {
+          host: { username: "X", symbol: null }
+        }
+      }).then(() => {
+        subscribeToRoomUpdates();
+      });
+    }
+    function joinRoomAsGuest(data) {
+      if (data.started) {
+        alert("This code is already in use.");
+        return;
+      }
+    
+      const symbols = Math.random() < 0.5 ? ["X", "O"] : ["O", "X"];
+      const hostSymbol = symbols[0];
+      const guestSymbol = symbols[1];
+    
+      const firstTurn = Math.random() < 0.5 ? "X" : "O";
+    
+      roomRef.update({
+        started: true,
+        turn: firstTurn,
+        players: {
+          host: { username: hostSymbol, symbol: hostSymbol },
+          guest: { username: guestSymbol, symbol: guestSymbol }
+        }
+      }).then(() => {
+        subscribeToRoomUpdates();
+      });
+    }
+    function subscribeToRoomUpdates() {
+      roomRef.on("value", snapshot => {
+        const data = snapshot.val();
+        if (!data) return;
+    
+        // Assign my symbol once
+        if (!mySymbol && data.players) {
+          if (data.players.guest && data.players.guest.symbol && !mySymbol) {
+            mySymbol = data.players.guest.symbol;
+          }
+          if (!mySymbol && data.players.host && data.players.host.symbol) {
+            mySymbol = data.players.host.symbol;
+          }
+        }
+    
+        // Sync board
+        if (Array.isArray(data.board)) {
+          applyOnlineBoard(data.board);
+        }
+    
+        // Turn logic
+        isMyTurn = (data.turn === mySymbol);
+      });
+    }
+    function applyOnlineBoard(firebaseBoard) {
+      for (let i = 0; i < 9; i++) {
+        board[i] = firebaseBoard[i];
+      }
+      renderLocal();
+    }
+    function handleOnlineClick(index) {
+      if (!isMyTurn) return;
+      if (board[index] !== "") return;
+    
+      board[index] = mySymbol;
+      renderLocal();
+    
+      const nextTurn = mySymbol === "X" ? "O" : "X";
+    
+      roomRef.update({
+        board: board,
+        turn: nextTurn
+      });
+    
+      isMyTurn = false;
+    
+      const winner = checkWin(board);
+      if (winner) {
+        showGameOver(winner);
+      } else if (isDraw(board)) {
+        showGameOver("draw");
+      }
+        }
+        cell.addEventListener("click", () => {
+      const index = parseInt(cell.dataset.index);
+    
+      if (mode === "online") {
+        handleOnlineClick(index);
+      } else {
+        handleLocalClick(index);
+      }
+    });
   </script>
 </body>
 </html>
