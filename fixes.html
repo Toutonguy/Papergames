@@ -926,7 +926,7 @@ function renderTTT(){
 
 function tttClick(i, actor='human'){
   if(mode === "online"){
-    if(tttState.turn !== humanSymbol) return; // not your turn
+    if(tttState.turn !== humanSymbol) return;
   }
   if(!tttState || tttState.over) return;
   if(tttState.board[i]) return;
@@ -942,7 +942,6 @@ function tttClick(i, actor='human'){
   if(winner){
     tttState.over = true;
     tttState.winner = winner;
-
     bigStatus.textContent = `${winner} wins!`;
     score[winner]++; updateScores();
     showBanner(`${winner} wins`, `${winner} has won Noughts & Crosses.`);
@@ -950,7 +949,6 @@ function tttClick(i, actor='human'){
   else if(tttState.board.every(Boolean)){
     tttState.over = true;
     tttState.winner = null;
-
     bigStatus.textContent = 'Draw';
     showBanner('Draw', 'The game ended in a draw.');
   } 
@@ -964,7 +962,7 @@ function tttClick(i, actor='human'){
     const safeState = makeFirestoreSafe(tttState);
     const gameRef = doc(db, "games", onlineGameId);
     updateDoc(gameRef, { state: safeState });
-    return; // Firestore will trigger renderOnlineGame()
+    return; // MUST BE INSIDE THE FUNCTION
   }
 
   renderTTT();
