@@ -693,7 +693,10 @@ function renderOnlineGame(game){
       state = { board: Array(9).fill(null), turn: state && state.turn ? state.turn : startingSymbol || 'X', over:false };
     }
   }
-
+  console.log("FIRESTORE UPDATE RECEIVED:", {
+  turn: state.turn,
+  board: state.board
+});
   if(gameType === 'mega'){
     if(!state || !Array.isArray(state.boards) || state.boards.length !== 9){
       console.warn('renderOnlineGame: malformed mega state, using fallback', state);
@@ -966,6 +969,11 @@ function tttClick(i, actor='human'){
   }
 
   renderTTT();
+  console.log("LOCAL MOVE:", {
+  clicked: i,
+  beforeTurn: tttState.turn,
+  board: [...tttState.board]
+});
   scheduleAIMove(250);
 }
 
