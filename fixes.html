@@ -2045,7 +2045,7 @@ async function joinLobby(id){
 }
 
 /* ---------- Lifecycle ---------- */
-function startNewGame(pushOnline = true){
+async function startNewGame(pushOnline = true){
   aiPlayer = (mode === 'ai') ? (humanSymbol === 'X' ? 'O' : 'X') : null;
   if(mode === 'online') aiPlayer = null;
   if (mode === 'online' && currentGameId) {
