@@ -666,61 +666,110 @@ function restoreArrays(value) {
 
   return value;
 }
-function renderOnlineGame(game){
-  if(!game) return;
+function renderOnlineGame(game) {
+  if (!game) return;
 
-  // basic info
+  // --- Basic info ---
   gameType = game.gameType;
   gameSelect.value = gameType;
 
   const uid = auth.currentUser && auth.currentUser.uid;
-  if(uid === game.hostId){ isHost = true; humanSymbol = 'X'; }
-  else if(uid === game.guestId){ isHost = false; humanSymbol = 'O'; }
+  if (uid === game.hostId) {
+    isHost = true;
+    humanSymbol = 'X';
+  } else if (uid === game.guestId) {
+    isHost = false;
+    humanSymbol = 'O';
+  }
 
   startingSymbol = game.startingSymbol || 'X';
-  if(game.status === 'waiting') lobbyInfo.textContent = `Lobby ID: ${currentGameId || onlineGameId} — Waiting for opponent to join…`;
-  else if(game.status === 'active') lobbyInfo.textContent = 'Opponent connected. Play!';
 
-  // raw + restore
+  if (game.status === 'waiting') {
+    lobbyInfo.textContent =
+      `Lobby ID: ${currentGameId || onlineGameId} — Waiting for opponent to join…`;
+  } else if (game.status === 'active') {
+    lobbyInfo.textContent = 'Opponent connected. Play!';
+  }
+
+  // --- Restore arrays from Firestore ---
   console.log('raw game.state from Firestore:', game.state);
-  
   let state = restoreArrays(game.state || {});
   console.log('restored state:', state);
-  // validate per-game shapes to avoid crashes
-  if(gameType === 'ttt'){
-    if(!state || !Array.isArray(state.board) || state.board.length !== 9){
+
+  // --- Validate Tic‑Tac‑Toe state ---
+  if (gameType === 'ttt') {
+    if (!state || !Array.isArray(state.board) || state.board.length !== 9) {
       console.warn('renderOnlineGame: malformed ttt state, using fallback', state);
-      state = { board: Array(9).fill(null), turn: state && state.turn ? state.turn : startingSymbol || 'X', over:false };
+      state = {
+        board: Array(9).fill(null),
+        turn: state && state.turn ? state.turn : startingSymbol || 'X',
+        over: false
+      };
     }
   }
-  console.log("FIRESTORE UPDATE RECEIVED:", {
-  turn: state.turn,
-  board: state.board
-});
-  if(gameType === 'mega'){
-    if(!state || !Array.isArray(state.boards) || state.boards.length !== 9){
+
+  // Debug: show turn + board
+  console.log("🔥 FIRESTORE UPDATE RECEIVED:",
+    "turn =", state.turn,
+    "board =", JSON.stringify(state.board),
+    "over =", state.over
+  );
+
+  // --- Validate Mega state ---
+  if (gameType === 'mega') {
+    if (!state || !Array.isArray(state.boards) || state.boards.length !== 9) {
       console.warn('renderOnlineGame: malformed mega state, using fallback', state);
       state = {
-        boards: Array.from({length:9}, ()=> Array(9).fill(null)),
+        boards: Array.from({ length: 9 }, () => Array(9).fill(null)),
         miniWinner: Array(9).fill(null),
         turn: state && state.turn ? state.turn : startingSymbol || 'X',
         activeMini: null,
         over: false
       };
     } else {
-      state.boards = state.boards.map(b => Array.isArray(b) && b.length===9 ? b : Array(9).fill(null));
-      state.miniWinner = Array.isArray(state.miniWinner) ? state.miniWinner : Array(9).fill(null);
+      state.boards = state.boards.map(b =>
+        Array.isArray(b) && b.length === 9 ? b : Array(9).fill(null)
+      );
+      state.miniWinner = Array.isArray(state.miniWinner)
+        ? state.miniWinner
+        : Array(9).fill(null);
     }
   }
 
-  // route to local state + render
+  // --- IMPORTANT FIX ---
+  // Ensure local state is updated BEFORE click-blocking happens
+  if (gameType === 'ttt') {
+    tttState = state;
+  }
+
+  // --- Route to renderer ---
   switch (gameType) {
-    case 'ttt': tttState = state; renderTTT(); break;
-    case 'mega': megaState = state; renderMega(); break;
-    case 'dots': dotsState = state; renderDots(); break;
-    case 'hangman': hangState = state; renderHangman(); break;
-    case 'battleship': battleState = state; renderBattleship(); break;
-    default: console.warn('renderOnlineGame: unknown gameType', gameType);
+    case 'ttt':
+      renderTTT();
+      break;
+
+    case 'mega':
+      megaState = state;
+      renderMega();
+      break;
+
+    case 'dots':
+      dotsState = state;
+      renderDots();
+      break;
+
+    case 'hangman':
+      hangState = state;
+      renderHangman();
+      break;
+
+    case 'battleship':
+      battleState = state;
+      renderBattleship();
+      break;
+
+    default:
+      console.warn('renderOnlineGame: unknown gameType', gameType);
   }
 
   updateStatus();
