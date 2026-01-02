@@ -684,8 +684,8 @@ function renderOnlineGame(game){
   // raw + restore
   console.log('raw game.state from Firestore:', game.state);
   
-  console.log('restored state:', state);
   let state = restoreArrays(game.state || {});
+  console.log('restored state:', state);
   // validate per-game shapes to avoid crashes
   if(gameType === 'ttt'){
     if(!state || !Array.isArray(state.board) || state.board.length !== 9){
