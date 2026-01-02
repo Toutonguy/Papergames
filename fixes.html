@@ -2045,6 +2045,16 @@ async function joinLobby(id){
 function startNewGame(pushOnline = true){
   aiPlayer = (mode === 'ai') ? (humanSymbol === 'X' ? 'O' : 'X') : null;
   if(mode === 'online') aiPlayer = null;
+  if (mode === 'online' && currentGameId) {
+    const initial = getCurrentState();
+    const safe = makeFirestoreSafe(initial);
+    const gameRef = doc(db, "games", currentGameId);
+    await updateDoc(gameRef, { 
+        gameType,
+        state: safe,
+        startingSymbol
+    });
+}
 
   hideHangInputPanel();
   hideTurnScreen();
