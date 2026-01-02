@@ -928,6 +928,13 @@ function renderTTT(){
 }
 
 function tttClick(i, actor='human'){
+  if (mode === "online") {
+    console.log("🚫 CLICK BLOCK CHECK:", {
+      humanSymbol,
+      turn: tttState.turn,
+      allowed: tttState.turn === humanSymbol
+    });
+
   if(mode === "online"){
     if(tttState.turn !== humanSymbol) return;
   }
