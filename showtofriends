@@ -1,0 +1,2357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Game Suite — Integrated Hangman & Battleships (Merged)</title>
+<style>
+:root{
+  --bg:#071022; --panel:#0b1220; --accent:#06b6d4; --muted:#94a3b8;
+  --x:#ef4444; --o:#60a5fa; --box-x:rgba(239,68,68,0.12); --box-o:rgba(96,165,250,0.12);
+}
+*{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;}
+body{margin:0;background:linear-gradient(180deg,#041021,#071a2a);color:#e6eef6}
+.wrap{max-width:1200px;margin:20px auto;padding:18px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));position:relative}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+h1{font-size:18px;margin:0}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+label.form-label{font-size:13px;color:var(--muted);margin-right:6px}
+select,input[type=number],button,input[type=text],input[type=password]{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+button{background:var(--accent);color:#042027;border:none;cursor:pointer}
+button.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+main{display:flex;gap:16px;align-items:flex-start}
+.left{flex:1}
+.right{width:360px}
+.panel{background:var(--panel);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+.status{padding:10px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);margin-bottom:12px}
+.board-wrap{display:flex;justify-content:center}
+.ttt{width:320px;height:320px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:6px}
+.cell{background:rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center;font-size:48px;cursor:pointer;border-radius:8px;-webkit-user-select:none;user-select:none}
+.cell.x{color:var(--x)} .cell.o{color:var(--o)}
+.mega{width:540px;height:540px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:10px}
+.mini{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:4px;padding:6px;background:rgba(255,255,255,0.02);border-radius:8px;position:relative}
+.mini.locked{outline:3px solid rgba(255,255,255,0.03);opacity:0.6;pointer-events:none}
+.mini.active{box-shadow:0 0 0 4px rgba(6,182,212,0.06);outline:2px solid rgba(6,182,212,0.12)}
+.mini .cell{font-size:20px;height:56px;border-radius:6px}
+.mini .cell.x{font-size:22px} .mini .cell.o{font-size:22px}
+.mini .winner-overlay{position:absolute;inset:6px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:36px;opacity:.95}
+.mini.won .winner-overlay.x{background:linear-gradient(90deg, rgba(239,68,68,0.12), rgba(239,68,68,0.06));color:var(--x)}
+.mini.won .winner-overlay.o{background:linear-gradient(90deg, rgba(96,165,250,0.12), rgba(96,165,250,0.06));color:var(--o)}
+
+.dots-wrap{display:flex;flex-direction:column;gap:10px;align-items:center}
+.dot{width:12px;height:12px;border-radius:50%;background:#fff}
+.edge{display:flex;align-items:center;justify-content:center}
+.edge.h{height:12px;width:40px;background:rgba(255,255,255,0.03);cursor:pointer;border-radius:6px}
+.edge.v{width:12px;height:40px;background:rgba(255,255,255,0.03);cursor:pointer;border-radius:6px}
+.edge.claimed.x{background:linear-gradient(90deg,var(--x),#ffb4b4)}
+.edge.claimed.o{background:linear-gradient(90deg,var(--o),#bcd9ff)}
+.box{width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:transparent;font-weight:700;border-radius:6px;transition:background .18s, transform .18s;position:relative}
+.box.claimed.x{background:var(--box-x);color:var(--x);transform:scale(1.02)}
+.box.claimed.o{background:var(--box-o);color:var(--o);transform:scale(1.02)}
+
+.hangman-area{display:flex;gap:12px;align-items:flex-start;flex-direction:column;align-items:flex-start}
+.word{font-size:28px;letter-spacing:6px}
+.letters{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.letter{padding:8px 10px;border-radius:6px;background:rgba(255,255,255,0.02);cursor:pointer;-webkit-user-select:none;user-select:none}
+.letter.disabled{opacity:0.35;pointer-events:none}
+
+.battleship-grids{display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
+.battleship-grid-wrapper{display:flex;flex-direction:column;align-items:center}
+.battleship-grid-label{font-size:14px;font-weight:600;margin-bottom:8px;color:var(--muted)}
+.battleship-grid{display:grid;grid-template-columns:repeat(10,32px);gap:4px;padding:12px;border:2px solid rgba(6,182,212,0.3);border-radius:8px;background:rgba(255,255,255,0.01)}
+.battleship-info{text-align:center;margin-bottom:12px;padding:10px;background:rgba(255,255,255,0.02);border-radius:8px}
+.ship-list{display:flex;gap:8px;justify-content:center;margin-top:6px;flex-wrap:wrap}
+.ship-item{padding:4px 8px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);border-radius:4px;font-size:12px}
+.cell-b{width:32px;height:32px;background:rgba(255,255,255,0.02);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px}
+.cell-b.ship{background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3)}
+.cell-b.hit{background:#ef4444;color:#fff;font-weight:700}
+.cell-b.hit::after{content:'✕'}
+.cell-b.miss{background:rgba(148,163,184,0.3);color:var(--muted)}
+.cell-b.miss::after{content:'○'}
+.cell-b.no-click{cursor:default}
+
+footer{margin-top:14px;color:var(--muted);font-size:13px;display:flex;justify-content:space-between}
+.banner { position:fixed; inset:0; display:flex;align-items:center;justify-content:center; background:rgba(2,6,23,0.6); z-index:9999; visibility:hidden; opacity:0; transition:opacity .18s; }
+.banner.show{ visibility:visible; opacity:1; }
+.banner-card{background:var(--panel);padding:22px;border-radius:12px;border:1px solid rgba(255,255,255,0.04);text-align:center;min-width:320px}
+.banner-card h2{margin:0 0 8px 0}
+.banner-card p{margin:0 0 12px 0;color:var(--muted)}
+.panel-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.panel-actions{gap:8px}
+.db-inputs{display:flex;gap:8px}
+.lobby-buttons{display:flex;gap:8px}
+.score-row{display:flex;gap:12px;margin-top:8px}
+.score-x{color:var(--x);font-weight:700}
+.score-o{color:var(--o);font-weight:700}
+.small{font-size:13px;color:var(--muted)}
+hr{border:none;border-top:1px solid rgba(255,255,255,0.03);margin:12px 0}
+.hidden{display:none}
+
+/* Turn swap full-screen overlay */
+.turn-screen{
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,0.95);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  z-index:9998;
+  color:#e5e7eb;
+}
+.turn-screen.hidden{display:none}
+.turn-message{
+  font-size:22px;
+  margin-bottom:16px;
+}
+.turn-button{
+  padding:10px 18px;
+  border-radius:999px;
+  border:none;
+  background:var(--accent);
+  color:#02121f;
+  cursor:pointer;
+  font-weight:600;
+}
+
+/* Orientation slide-in panel (right) */
+.orient-panel{
+  position:fixed;
+  top:0;
+  right:0;
+  width:260px;
+  max-width:70vw;
+  height:100vh;
+  background:rgba(15,23,42,0.97);
+  border-left:1px solid rgba(148,163,184,0.25);
+  box-shadow:-8px 0 24px rgba(0,0,0,0.5);
+  transform:translateX(100%);
+  transition:transform .22s ease-out;
+  z-index:9997;
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.orient-panel.show{
+  transform:translateX(0);
+}
+.orient-title{
+  font-weight:600;
+  font-size:15px;
+}
+.orient-sub{
+  font-size:13px;
+  color:var(--muted);
+}
+.orient-actions{
+  display:flex;
+  gap:8px;
+  margin-top:8px;
+}
+.orient-actions button{
+  flex:1;
+  padding:8px 10px;
+  border-radius:999px;
+}
+.orient-close{
+  margin-top:auto;
+  font-size:12px;
+  color:var(--muted);
+  cursor:pointer;
+  text-align:right;
+}
+
+/* Battleships damaged/sunk */
+.cell-b.damaged {
+  background: rgba(255,165,0,0.35);
+  border: 1px solid rgba(255,165,0,0.7);
+  position: relative;
+}
+.cell-b.damaged::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255,165,0,0.8) 0,
+    rgba(255,165,0,0.8) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+  pointer-events: none;
+}
+.cell-b.sunk {
+  background: #ef4444;
+  color: #fff;
+  font-weight: 700;
+  position: relative;
+}
+.cell-b.sunk::after {
+  content: "✕";
+  position: absolute;
+}
+@media (max-width:980px){main{flex-direction:column}.right{width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Game Suite</h1>
+    <div class="controls" role="region" aria-label="Game controls">
+      <label for="gameSelect" class="form-label">Game</label>
+      <select id="gameSelect" title="Choose game" aria-label="Choose game">
+        <option value="ttt">Noughts & Crosses</option>
+        <option value="mega">Mega Noughts & Crosses</option>
+        <option value="dots">Dots & Boxes</option>
+        <option value="hangman">Hangman</option>
+        <option value="battleship">Battleships</option>
+      </select>
+
+      <label for="modeSelect" class="form-label">Mode</label>
+      <select id="modeSelect" title="Choose mode" aria-label="Choose mode">
+        <option value="local">Local PvP</option>
+        <option value="ai">Versus Computer</option>
+        <option value="online">Online PvP</option>
+      </select>
+
+      <button id="newBtn" title="Start a new game">New Game</button>
+      <button id="resetBtn" class="secondary" title="Reset scores">Reset Scores</button>
+    </div>
+  </header>
+
+  <div id="boardContainer" class="board-wrap" role="region" aria-label="Game board"></div>
+
+  <main>
+    <div class="left">
+      <div id="gameArea" class="panel" aria-live="polite">
+        <div id="status" class="status">
+          <div id="bigStatus">Choose a game and press New Game</div>
+          <div id="subStatus" class="small"></div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="right">
+      <div class="panel" aria-label="Game options">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div><strong>Players</strong></div>
+          <div class="small">Local 2 players, AI, or online</div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button id="swapBtn" class="secondary" title="Swap human symbol X/O">Swap X/O</button>
+          <button id="swapStarterBtn" class="secondary" title="Swap who starts the game">Swap Starter</button>
+          <button id="hintBtn" class="secondary" title="Show a hint">Hint</button>
+        </div>
+
+        <div style="margin-top:8px">
+          <label for="dbCols" class="form-label">Dots & Boxes size</label>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <input id="dbCols" type="number" min="2" max="8" value="6" title="Number of columns" placeholder="Cols" aria-label="Dots columns" style="width:70px" />
+            <input id="dbRows" type="number" min="2" max="8" value="6" title="Number of rows" placeholder="Rows" aria-label="Dots rows" style="width:70px" />
+          </div>
+        </div>
+
+        <hr />
+        <pre id="hangmanDrawing"></pre>
+        <div id="hangInputPanel" class="hidden" aria-hidden="true" style="margin-top:8px">
+          <div class="small" style="margin-bottom:6px">Local Hangman: Host enters a secret word (masked)</div>
+          <input id="hangSecret" type="password" placeholder="Enter secret word" aria-label="Secret word" style="width:100%;margin-bottom:8px" />
+          <div style="display:flex;gap:8px">
+            <button id="setHangWord">Set Secret Word</button>
+            <button id="cancelHangWord" class="secondary">Cancel</button>
+          </div>
+          <div id="hangInputNote" class="small" style="margin-top:8px;color:var(--muted)">Word will be hidden from the guesser. Only letters A–Z are allowed.</div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div><strong>Online Lobby</strong></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input id="lobbyId" type="text" placeholder="Lobby ID" title="Enter lobby ID" aria-label="Lobby ID" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit" />
+            <button id="createLobby" class="secondary" title="Create an online lobby">Create Lobby</button>
+            <button id="joinLobby" class="secondary" title="Join an online lobby">Join Lobby</button>
+          </div>
+          <div id="lobbyInfo" class="small" style="margin-top:8px;color:var(--muted)" aria-live="polite"></div>
+        </div>
+
+      </div>
+
+      <div style="height:12px"></div>
+
+      <div class="panel small" aria-label="Scores">
+        <div><strong>Scores</strong></div>
+        <div style="display:flex;gap:12px;margin-top:8px">
+          <div><span class="score-x">X</span>: <span id="scoreX">0</span></div>
+          <div><span class="score-o">O</span>: <span id="scoreO">0</span></div>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <footer>
+    <div class="small">Local two-player games, AI, and online PvP using Firestore.</div>
+    <div class="small">Tip: Share the Lobby ID with your friend to play online.</div>
+  </footer>
+</div>
+
+<div id="banner" class="banner" role="dialog" aria-hidden="true" aria-labelledby="bannerTitle" aria-describedby="bannerText">
+  <div class="banner-card">
+    <h2 id="bannerTitle">Result</h2>
+    <p id="bannerText"></p>
+    <div class="banner-actions">
+      <button id="bannerNew" title="Start a new game">New Game</button>
+      <button id="bannerClose" class="secondary" title="Close banner">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Turn swap screen -->
+<div id="turnScreen" class="turn-screen hidden">
+  <div class="turn-message" id="turnMessage"></div>
+  <button class="turn-button" id="turnContinue">Tap to continue</button>
+</div>
+
+<!-- Orientation slide-in panel -->
+<div id="orientPanel" class="orient-panel">
+  <div class="orient-title" id="orientTitle">Choose orientation</div>
+  <div class="orient-sub" id="orientSub">Click a direction to place your ship.</div>
+  <div class="orient-actions">
+    <button id="orientHorizontal">Horizontal</button>
+    <button id="orientVertical">Vertical</button>
+  </div>
+  <div class="orient-close" id="orientClose">Close</div>
+</div>
+
+<script type="module">
+// ---------- Firebase imports ----------
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  updateDoc,
+  onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+// ---------- Firebase config ----------
+const firebaseConfig = {
+  apiKey: "AIzaSyCXun1MQqMj0QxldWyFKUG5hPd_THHpMiA",
+  authDomain: "online-paper-games.firebaseapp.com",
+  projectId: "online-paper-games",
+  storageBucket: "online-paper-games.firebasestorage.app",
+  messagingSenderId: "1:660455812912",
+  appId: "1:660455812912:web:89ac7b728f0dfaf83de2f5"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+// ---------- DOM helpers ----------
+const $ = s => document.querySelector(s);
+const gameSelect = $('#gameSelect');
+const modeSelect = $('#modeSelect');
+const newBtn = $('#newBtn');
+const resetBtn = $('#resetBtn');
+const boardContainer = $('#boardContainer');
+const bigStatus = $('#bigStatus');
+const subStatus = $('#subStatus');
+const swapBtn = $('#swapBtn');
+const swapStarterBtn = $('#swapStarterBtn');
+const hintBtn = $('#hintBtn');
+const dbColsInput = $('#dbCols');
+const dbRowsInput = $('#dbRows');
+const scoreX = $('#scoreX');
+const scoreO = $('#scoreO');
+const createLobbyBtn = $('#createLobby');
+const joinLobbyBtn = $('#joinLobby');
+const lobbyIdInput = $('#lobbyId');
+const lobbyInfo = $('#lobbyInfo');
+const B_SIZE = 10;
+const hangInputPanel = $('#hangInputPanel');
+const hangSecretInput = $('#hangSecret');
+const setHangWordBtn = $('#setHangWord');
+const cancelHangWordBtn = $('#cancelHangWord');
+const banner = $('#banner');
+const bannerTitle = $('#bannerTitle');
+const bannerText = $('#bannerText');
+const bannerNew = $('#bannerNew');
+const bannerClose = $('#bannerClose');
+const turnScreen = $('#turnScreen');
+const turnMessage = $('#turnMessage');
+const turnContinue = $('#turnContinue');
+const orientPanel = document.getElementById('orientPanel');
+const orientTitle = $('#orientTitle');
+const orientSub = $('#orientSub');
+const orientHorizontal = $('#orientHorizontal');
+const orientVertical = $('#orientVertical');
+const orientClose = $('#orientClose');
+
+const SHIP_NAMES = ["Carrier", "Battleship", "Cruiser", "Submarine", "Destroyer"];
+const SHIP_LENGTHS = [5,4,3,3,2];
+const SHIPS = [
+  { name: "Carrier", len: 5 },
+  { name: "Battleship", len: 4 },
+  { name: "Cruiser", len: 3 },
+  { name: "Submarine", len: 3 },
+  { name: "Destroyer", len: 2 }
+];
+
+const hangmanStages = [
+`
+
+=========`,
+`
+
+     |
+     |
+     |
+     |
+     |
+=========`,
+`
+
+ +---+
+     |
+     |
+     |
+     |
+     |
+=========`,
+`
+
+ +---+
+ |   |
+ O   |
+     |
+     |
+     |
+=========`,
+`
+
+ +---+
+ |   |
+ O   |
+ |   |
+     |
+     |
+=========`,
+`
+
+ +---+
+ |   |
+ O   |
+/|   |
+     |
+     |
+=========`,
+`
+
+ +---+
+ |   |
+ O   |
+/|\\  |
+     |
+     |
+=========`,
+`
+
+ +---+
+ |   |
+ O   |
+/|\\  |
+/    |
+     |
+=========`,
+`
+
+ +---+
+ |   |
+ O   |
+/|\\  |
+/ \\  |
+     |
+=========`
+];
+
+// ---------- Global state ----------
+let humanSymbol = 'X';
+let startingSymbol = 'X';
+let aiPlayer = null;
+let score = {X:0,O:0};
+let gameType = gameSelect.value;
+let mode = modeSelect.value;
+
+let tttState = null;
+let megaState = null;
+let dotsState = null;
+let hangState = null;
+let battleState = null;
+let pendingPlacement = null;
+
+// Online state
+let currentGameId = null;
+let isHost = false;
+let gameUnsub = null; // Firestore listener unsubscribe
+
+window.pendingPlacement = pendingPlacement;
+window.DEBUG = false;
+
+// ---------- Helpers ----------
+function debugLog(...args){
+  if(window.DEBUG === false) return;
+  console.log('[DEBUG]', ...args);
+}
+function makeFirestoreSafe(obj) {
+  function convert(value) {
+    if (Array.isArray(value)) {
+      const out = {};
+      for (let i = 0; i < value.length; i++) {
+        out[i] = convert(value[i]);
+      }
+      return out;
+    }
+    if (value && typeof value === 'object') {
+      const o = {};
+      for (const k in value) {
+        o[k] = convert(value[k]);
+      }
+      return o;
+    }
+    return value;
+  }
+  return convert(obj);
+}
+function restoreArrays(value) {
+  if (Array.isArray(value)) return value.map(v => restoreArrays(v));
+  if (value && typeof value === 'object') {
+    const keys = Object.keys(value);
+    if (keys.every(k => /^\d+$/.test(k))) {
+      return keys.sort((a,b)=>Number(a)-Number(b)).map(k => restoreArrays(value[k]));
+    }
+    const obj = {};
+    for (const k in value) obj[k] = restoreArrays(value[k]);
+    return obj;
+  }
+  return value;
+}
+
+// ---------- Firestore helpers ----------
+async function createGameDoc(gameType, initialState){
+  const gameId = Math.random().toString(36).slice(2, 8).toUpperCase();
+  const gameRef = doc(db, "games", gameId);
+  const payload = {
+    gameType,
+    hostId: auth.currentUser.uid,
+    guestId: null,
+    status: "waiting",
+    state: makeFirestoreSafe(initialState),
+    startingSymbol,
+    createdAt: Date.now()
+  };
+  await setDoc(gameRef, payload);
+  return gameId;
+}
+async function joinGameDoc(gameId){
+  const gameRef = doc(db, "games", gameId);
+  await updateDoc(gameRef, { guestId: auth.currentUser.uid, status: "active" });
+
+  // Local client state: treat this client as the guest (O)
+  isHost = false;
+  humanSymbol = 'O';
+  mode = 'online';
+  if (modeSelect) modeSelect.value = 'online';
+  currentGameId = gameId;
+
+  if (lobbyInfo) lobbyInfo.textContent = `Joined lobby: ${gameId}. Waiting for sync…`;
+  listenToGame(gameId);
+}
+function stopListening(){
+  if(gameUnsub) { gameUnsub(); gameUnsub = null; }
+}
+function listenToGame(gameId){
+  console.log("listener has run")
+  stopListening();
+  currentGameId = gameId;
+  const gameRef = doc(db, "games", gameId);
+  gameUnsub = onSnapshot(gameRef, (snap) => {
+    if(!snap.exists()){
+      lobbyInfo.textContent = 'Lobby not found.';
+      return;
+    }
+    const game = snap.data();
+    if(game.gameType && game.gameType !== gameType){
+      gameType = game.gameType;
+      gameSelect.value = gameType;
+      startNewGame(false);
+    }
+    renderOnlineGame(game);
+  });
+}
+async function pushState(){
+  if(mode !== 'online' || !currentGameId) return;
+  if (gameType === 'hangman')return;
+
+  try {
+    const state = getCurrentState();
+    if(!state) return;
+    const safeState = makeFirestoreSafe(state);
+    const gameRef = doc(db, 'games', currentGameId);
+    await updateDoc(gameRef, { state: safeState, gameType, startingSymbol, status: 'active' });
+  } catch (err) {
+    console.error('pushState error', err);
+  }
+}
+
+// ---------- Map Firestore -> local state + render ----------
+function getCurrentState(){
+  switch (gameType) {
+    case 'ttt':
+      return tttState || { board: Array(9).fill(null), turn: startingSymbol || 'X', over: false };
+    case 'mega':
+      return megaState || {
+        boards: Array.from({ length: 9 }, () => Array(9).fill(null)),
+        miniWinner: Array(9).fill(null),
+        turn: startingSymbol || 'X',
+        activeMini: null,
+        over: false
+      };
+    case 'dots':
+      return dotsState || {
+        rows: 3, cols: 3,
+        hEdges: Array.from({ length: 3 }, () => Array(2).fill(null)),
+        vEdges: Array.from({ length: 2 }, () => Array(3).fill(null)),
+        boxOwner: Array.from({ length: 2 }, () => Array(2).fill(null)),
+        turn: startingSymbol || 'X',
+        scores:{X:0,O:0},
+        over: false
+      };
+    case 'hangman':
+      return hangState || { word: '', revealed: [], wrong: [], maxWrong: 7, host: 'local-host', guesser: 'human', over: false };
+    case 'battleship':
+      return battleState || { aiMemory:{hits:[],mode:'hunt',direction:null}, gridX:createEmptyGrid(B_SIZE), gridO:createEmptyGrid(B_SIZE), shipsX:[], shipsO:[], turn: startingSymbol || 'X', placing:true, placingPlayer:'X', currentShipIndex:0, over:false };
+    default:
+      return {};
+  }
+}
+function updateSwapStarterLabel(){
+  swapStarterBtn.textContent = `Swap starter (Current: ${startingSymbol})`;
+}
+function renderOnlineGame(game){
+  if(!game) return;
+  if(mode !== 'online'){ mode = 'online'; modeSelect.value = 'online'; aiPlayer = null; }
+
+  if (typeof isHost === 'boolean') {
+    humanSymbol = isHost ? 'X' : 'O';
+  } else {
+    try {
+      if (auth && auth.currentUser && game.hostId && auth.currentUser.uid === game.hostId) {
+        isHost = true;
+        humanSymbol = 'X';
+      } else {
+        isHost = false;
+        humanSymbol = 'O';
+      }
+    } catch (e) {}
+  }
+
+  let isChooser = false;
+  let isGuesser = false;
+
+  if (game.gameType === 'hangman') {
+    const startingIsHost = (game.startingSymbol === 'X');
+    const hostIsChooser = startingIsHost;
+    if (isHost && hostIsChooser) isChooser = true;
+    if (!isHost && !hostIsChooser) isChooser = true;
+    isGuesser = !isChooser;
+  }
+
+  if (game.gameType === 'hangman') {
+    if (game.status === 'waiting') {
+        if (isChooser) {
+            showChooserWordInput();
+        } else {
+            hideChooserWordInput();
+        }
+    } else {
+        hideChooserWordInput();
+    }
+  }
+
+  if (game.gameType === 'hangman' && isChooser && localHangWord) {
+    const fs = game.state || {};
+
+    // Read guesses from the correct place
+    const guesses = Array.isArray(fs.publicGuesses) ? fs.publicGuesses : [];
+
+    // Compute masked word
+    const masked = localHangWord
+        .split("")
+        .map(ch => guesses.includes(ch.toLowerCase()) ? ch : "_")
+        .join("");
+
+    // Compute wrong guesses
+    const wrong = guesses.filter(g => !localHangWord.includes(g.toUpperCase()));
+
+    // Win/lose detection
+    const maxWrong = typeof fs.maxWrong === "number" ? fs.maxWrong : 7;
+    const isWin = masked.indexOf("_") === -1;
+    const isLose = wrong.length >= maxWrong;
+
+    // Push updated state back to Firestore
+    const gameRef = doc(db, "games", currentGameId);
+    updateDoc(gameRef, {
+        "state.maskedWord": masked,
+        "state.wrong": wrong,
+        "state.publicGuesses": guesses,
+        "state.maxWrong": maxWrong,
+        status: isWin || isLose ? "over" : "active"
+    });
+}
+
+  if(game.status === 'waiting') lobbyInfo.textContent = `Lobby ID: ${currentGameId} — Waiting for opponent to join…`;
+  else if(game.status === 'active') lobbyInfo.textContent = 'Opponent connected. Play!';
+
+  let state = restoreArrays(game.state || {});
+  if(game.gameType === 'battleship'){
+    state = normalizeBattleshipState(state);
+  }
+  if (game.startingSymbol) {
+    startingSymbol = game.startingSymbol;
+    updateSwapStarterLabel();
+  }
+  switch (game.gameType) {
+    case 'ttt': tttState = state; renderTTT(); break;
+    case 'mega': megaState = state; renderMega(); break;
+    case 'dots': dotsState = state; renderDots(); break;
+    case 'hangman': {
+    const fs = game.state || {};
+
+    hangState = {
+        ...hangState,
+
+        // Always arrays
+        wrong: Array.isArray(fs.wrong) ? fs.wrong : [],
+        publicGuesses: Array.isArray(fs.publicGuesses) ? fs.publicGuesses : [],
+
+        // Always strings
+        maskedWord: typeof fs.maskedWord === "string" ? fs.maskedWord : "",
+
+        // Always number
+        maxWrong: typeof fs.maxWrong === "number" ? fs.maxWrong : 7,
+
+        // Always string or null
+        host: typeof fs.host === "string" ? fs.host : hangState?.host || null
+    };
+    // If I'm the guesser, I don't know the real word.
+// But I DO need a placeholder so the UI works.
+if (!isChooser) {
+    if (typeof hangState.maskedWord === "string") {
+        hangState.word = "_".repeat(hangState.maskedWord.length);
+    }
+}
+    renderHangman();
+    break;
+
+}
+    case 'battleship': battleState = state; renderBattleship(); break;
+    default: console.warn('renderOnlineGame: unknown gameType', game.gameType);
+  }
+  updateStatus();
+}
+
+// ---------- Event wiring ----------
+function wireEvents(){
+  if (typeof startingSymbol === 'undefined' || startingSymbol === null) {
+    startingSymbol = 'X';
+  }
+  updateSwapStarterLabel();
+
+  gameSelect.addEventListener('change', ()=> {
+    const prev = gameType;
+    gameType = gameSelect.value;
+    updateUIForGame();
+    toggleHangInputVisibility();
+    if(mode === 'online' && isHost && currentGameId){
+      const initial = getInitialStateFor(gameType);
+      (async ()=> {
+        const gameRef = doc(db, "games", currentGameId);
+        await updateDoc(gameRef, { gameType, state: makeFirestoreSafe(initial), startingSymbol });
+      })();
+    } else {
+      startNewGame();
+    }
+  });
+
+  modeSelect.addEventListener('change', () => {
+    mode = modeSelect.value;
+    aiPlayer = (mode === 'ai') ? (humanSymbol === 'X' ? 'O' : 'X') : null;
+    if(mode === 'online'){
+      lobbyInfo.textContent = 'Create or join a lobby to start online play.';
+    } else {
+      currentGameId = null;
+      stopListening();
+      lobbyInfo.textContent = '';
+    }
+    updateUIForGame();
+    toggleHangInputVisibility();
+    scheduleAIMove(200);
+  });
+
+  newBtn.addEventListener('click', ()=> startNewGame());
+  resetBtn.addEventListener('click', ()=> resetScores());
+
+  swapBtn.addEventListener('click', () => {
+    if(mode === 'online'){
+      alert('Cannot swap symbols in online mode. Host is X, guest is O.');
+      return;
+    }
+    humanSymbol = humanSymbol === 'X' ? 'O' : 'X';
+    aiPlayer = (mode === 'ai') ? (humanSymbol === 'X' ? 'O' : 'X') : null;
+    updateStatus();
+    scheduleAIMove(200);
+  });
+
+  swapStarterBtn.addEventListener('click', async () => {
+    const newStart = startingSymbol === 'X' ? 'O' : 'X';
+    if(mode === 'online'){
+      if(!isHost){
+        alert('Only the host can change who starts in online mode.');
+        return;
+      }
+      try {
+        const gameRef = doc(db, 'games', currentGameId);
+        await updateDoc(gameRef, { startingSymbol: newStart });
+        startingSymbol = newStart;
+        updateStatus();
+        alert(`Starting symbol set to ${newStart}.`);
+      } catch (err) {
+        console.error('Failed to update startingSymbol in Firestore', err);
+        alert('Failed to update starting symbol. See console for details.');
+      }
+      return;
+    }
+    startingSymbol = newStart;
+    updateStatus();
+    alert(`Starting symbol set to ${newStart}.`);
+  });
+
+  hintBtn.addEventListener('click', ()=> showHint());
+
+  createLobbyBtn.addEventListener('click', ()=> createLobby());
+  joinLobbyBtn.addEventListener('click', ()=> joinLobby(lobbyIdInput.value.trim()));
+
+  bannerNew.addEventListener('click', ()=> { hideBanner(); startNewGame(); });
+  bannerClose.addEventListener('click', ()=> hideBanner());
+
+  setHangWordBtn.addEventListener('click', ()=> setHangWordFromInput());
+  cancelHangWordBtn.addEventListener('click', ()=> cancelHangWordInput());
+
+  turnContinue.addEventListener('click', () => {
+    hideTurnScreen();
+    if(gameType === 'battleship' && battleState && !battleState.over){
+      if(battleState.placing){
+        renderBattleshipPlacement();
+      }else{
+        renderBattleship();
+      }
+    }
+  });
+
+  orientHorizontal.addEventListener('click', () => chooseOrientation('h'));
+  orientVertical.addEventListener('click', () => chooseOrientation('v'));
+  orientClose.addEventListener('click', hideOrientPanel);
+
+  boardContainer.addEventListener('click', (e) => {
+    const el = e.target;
+    if(el.classList.contains('letter') && !el.classList.contains('disabled')){
+      const letter = el.dataset.letter;
+      handleHangGuess(letter);
+    }
+  });
+}
+
+// UI helpers
+function updateScores(){ scoreX.textContent = score.X; scoreO.textContent = score.O; }
+function updateUIForGame(){
+  subStatus.textContent = `Mode: ${mode} • Human: ${humanSymbol} • Starting: ${startingSymbol}`;
+}
+function updateStatus(){
+  subStatus.textContent = `Mode: ${mode} • Human: ${humanSymbol} • Starting: ${startingSymbol}`;
+}
+function showBanner(title, text){
+  bannerTitle.textContent = title;
+  bannerText.textContent = text;
+  banner.classList.add('show');
+  banner.setAttribute('aria-hidden','false');
+}
+function hideBanner(){
+  banner.classList.remove('show');
+  banner.setAttribute('aria-hidden','true');
+}
+function randomChoice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+function showTurnScreenFor(player, message){
+  if(mode !== 'local') return;
+  turnMessage.textContent = message || `${player}'s turn`;
+  turnScreen.classList.remove('hidden');
+}
+function hideTurnScreen(){ turnScreen.classList.add('hidden'); }
+
+function showOrientPanel(text){
+  orientTitle.textContent = text || 'Choose orientation';
+  orientSub.textContent = 'Click a direction to place your ship.';
+  orientPanel.style.display = '';
+  orientPanel.classList.add('show');
+}
+function hideOrientPanel(){ orientPanel.classList.remove('show'); }
+function chooseOrientation(dir){ commitPlacement(dir); hideOrientPanel(); }
+
+// ---------- AI scheduler ----------
+function scheduleAIMove(delay = 200){
+  clearTimeout(window.__aiTimer);
+  window.__aiTimer = setTimeout(()=>{
+    try{
+      if(mode !== 'ai') return;
+      if(gameType === 'ttt' && tttState && !tttState.over && tttState.turn === aiPlayer) aiMoveTTT();
+      else if(gameType === 'mega' && megaState && !megaState.over && megaState.turn === aiPlayer) aiMoveMega();
+      else if(gameType === 'dots' && dotsState && !dotsState.over && dotsState.turn === aiPlayer) aiMoveDots();
+      else if(gameType === 'battleship' && battleState && !battleState.over && !battleState.placing && battleState.turn === aiPlayer) aiFire();
+    }catch(e){ console.error('scheduleAIMove error', e); }
+  }, delay);
+}
+
+// ---------- Utility ----------
+function getInitialStateFor(type){
+  switch(type){
+    case 'ttt': return { board: Array(9).fill(null), turn: startingSymbol, over:false };
+    case 'mega': return { boards: Array.from({length:9}, ()=> Array(9).fill(null)), miniWinner: Array(9).fill(null), turn: startingSymbol, activeMini:null, over:false };
+    case 'dots': {
+      const cols = Math.max(2, Math.min(8, parseInt(dbColsInput.value)||6));
+      const rows = Math.max(2, Math.min(8, parseInt(dbRowsInput.value)||6));
+      const hEdges = Array(rows).fill(0).map(()=> Array(cols-1).fill(null));
+      const vEdges = Array(rows-1).fill(0).map(()=> Array(cols).fill(null));
+      const boxOwner = Array(rows-1).fill(0).map(()=> Array(cols-1).fill(null));
+      return { cols, rows, hEdges, vEdges, boxOwner, turn: startingSymbol, scores:{X:0,O:0}, over:false };
+    }
+    case 'hangman': return { word:'', revealed:[], wrong:[], maxWrong:7, host:null, guesser:null, over:false };
+    case 'battleship': return {
+      aiMemory:{hits:[],mode:'hunt',direction:null},
+      gridX: createEmptyGrid(B_SIZE),
+      gridO: createEmptyGrid(B_SIZE),
+      shipsX: [],
+      shipsO: [],
+      turn: startingSymbol,
+      over:false,
+      placing:true,
+      placingPlayer:'X',
+      currentShipIndex:0,
+      aiMode: mode==='ai'
+    };
+    default: return {};
+  }
+}
+
+/* ---------- Tic Tac Toe (3x3) ---------- */
+function checkWin(board){
+  const wins = [
+    [0,1,2], [3,4,5], [6,7,8],
+    [0,3,6], [1,4,7], [2,5,8],
+    [0,4,8], [2,4,6]
+  ];
+  for(const [a,b,c] of wins){
+    if(board[a] && board[a] === board[b] && board[a] === board[c]){
+      return board[a];
+    }
+  }
+  return null;
+}
+function findWinningMove(board, player){
+  for(let i=0;i<9;i++){
+    if(!board[i]){
+      const copy = board.slice(); copy[i]=player;
+      if(checkWin(copy)===player) return i;
+    }
+  }
+  return null;
+}
+function startTTT(){
+  tttState = { board: Array(9).fill(null), turn: startingSymbol, over:false };
+  renderTTT();
+  updateStatus();
+  if(mode === 'ai' && aiPlayer === startingSymbol) scheduleAIMove(200);
+}
+function renderTTT(){
+  if(!tttState || !Array.isArray(tttState.board) || tttState.board.length !== 9){
+    tttState = { board: Array(9).fill(null), turn: startingSymbol || 'X', over: false };
+  }
+  boardContainer.innerHTML = '';
+  const board = document.createElement('div'); board.className='ttt';
+  tttState.board.forEach((v,i)=>{
+    const c = document.createElement('div');
+    c.className = 'cell' + (v ? (' '+v.toLowerCase()) : '');
+    c.dataset.index = i; c.textContent = v ? v : '';
+    c.addEventListener('click', ()=> tttClick(i,'human'));
+    board.appendChild(c);
+  });
+  boardContainer.appendChild(board);
+
+  if(tttState.over){
+    if(typeof tttState.winner === 'string'){
+      bigStatus.textContent = `${tttState.winner} wins!`;
+      showBanner(`${tttState.winner} wins`, `${tttState.winner} has won Noughts & Crosses.`);
+    } else {
+      bigStatus.textContent = 'Draw';
+      showBanner('Draw', 'The game ended in a draw.');
+    }
+  } else {
+    bigStatus.textContent = `${tttState.turn}'s turn`;
+  }
+}
+function tttClick(i, actor='human'){
+  if(!tttState || tttState.over) return;
+  if(tttState.board[i]) return;
+
+  if(actor === 'human'){
+    if(mode === "online"){
+      if(tttState.turn !== humanSymbol) return;
+    } else if(mode === 'ai'){
+      if(tttState.turn === aiPlayer) return;
+    }
+  } else if(actor === 'ai'){
+    if(mode !== 'ai') return;
+    if(tttState.turn !== aiPlayer) return;
+  }
+
+  tttState.board[i] = tttState.turn;
+  const winner = checkWin(tttState.board);
+  if(winner){
+    tttState.over = true;
+    tttState.winner = winner;
+    score[winner]++; updateScores();
+    showBanner(`${winner} wins`, `${winner} has won Noughts & Crosses.`);
+  } else if(tttState.board.every(Boolean)){
+    tttState.over = true;
+    tttState.winner = null;
+    showBanner('Draw', 'The game ended in a draw.');
+  } else {
+    tttState.turn = tttState.turn==='X'?'O':'X';
+  }
+
+  renderTTT();
+  if(mode === 'online' && currentGameId) pushState();
+  scheduleAIMove(250);
+}
+function aiMoveTTT(){
+  if(!tttState || tttState.over) return;
+  if(!aiPlayer || tttState.turn !== aiPlayer) return;
+  const me = aiPlayer;
+  const opp = me==='X'?'O':'X';
+  const idx = findWinningMove(tttState.board, me)
+    ?? findWinningMove(tttState.board, opp)
+    ?? randomChoice(tttState.board.map((v,i)=>v?null:i).filter(n=>n!==null));
+  if(idx!=null) tttClick(idx,'ai');
+}
+
+/* ---------- Mega (Ultimate) ---------- */
+function startMega(){
+  megaState = {
+    boards: Array.from({length:9}, ()=> Array(9).fill(null)),
+    miniWinner: Array(9).fill(null),
+    turn: startingSymbol,
+    activeMini: null,
+    over:false
+  };
+  renderMega();
+  updateStatus();
+  if(mode === 'ai' && aiPlayer === startingSymbol) scheduleAIMove(250);
+}
+function renderMega(){
+  if(!megaState || !Array.isArray(megaState.boards) || megaState.boards.length !== 9){
+    megaState = {
+      boards: Array.from({length:9}, ()=> Array(9).fill(null)),
+      miniWinner: Array(9).fill(null),
+      turn: startingSymbol || 'X',
+      activeMini:null,
+      over:false
+    };
+  }
+
+  boardContainer.innerHTML = '';
+  if(!megaState) return;
+  const mega = document.createElement('div'); mega.className='mega';
+  megaState.boards.forEach((mini,mi)=>{
+    const miniEl = document.createElement('div'); miniEl.className='mini';
+    if(megaState.miniWinner[mi]) miniEl.classList.add('won');
+    if(megaState.activeMini === null || megaState.activeMini === mi) miniEl.classList.add('active');
+    if(megaState.miniWinner[mi]) miniEl.classList.add('locked');
+    mini.forEach((cell,ci)=>{
+      const c = document.createElement('div'); c.className='cell' + (cell?(' '+cell.toLowerCase()):'');
+      c.dataset.mi = mi; c.dataset.ci = ci; c.textContent = cell?cell:'';
+      c.addEventListener('click', ()=> megaClick(mi,ci,'human'));
+      miniEl.appendChild(c);
+    });
+    if(megaState.miniWinner[mi]){
+      const overlay = document.createElement('div'); overlay.className = 'winner-overlay ' + megaState.miniWinner[mi].toLowerCase();
+      overlay.textContent = megaState.miniWinner[mi];
+      miniEl.appendChild(overlay);
+      miniEl.classList.add('won');
+    }
+    mega.appendChild(miniEl);
+  });
+  boardContainer.appendChild(mega);
+  const meta = megaState.miniWinner.map(x=> x==='D' ? null : x);
+  const overall = checkWin(meta);
+  if(overall){
+    megaState.over = true;
+    bigStatus.textContent = `${overall} wins the Mega board!`;
+    score[overall]++; updateScores();
+    showBanner(`${overall} wins`, `${overall} has won Mega Noughts & Crosses.`);
+  } else if(megaState.miniWinner.every(x=>x!==null)){
+    megaState.over = true;
+    bigStatus.textContent = 'Mega: Draw';
+    showBanner('Draw', 'Mega Noughts & Crosses ended in a draw.');
+  } else {
+    bigStatus.textContent = `${megaState.turn}'s turn`;
+  }
+}
+function megaClick(mi, ci, actor='human'){
+  if(!megaState || megaState.over) return;
+  if(megaState.miniWinner[mi]) return;
+  if(megaState.activeMini !== null && megaState.activeMini !== mi) return;
+  if(megaState.boards[mi][ci]) return;
+
+  if(actor === 'human'){
+    if(mode === "online"){
+      if(megaState.turn !== humanSymbol) return;
+    } else if(mode === 'ai'){
+      if(megaState.turn === aiPlayer) return;
+    }
+  } else if(actor === 'ai'){
+    if(mode !== 'ai') return;
+    if(megaState.turn !== aiPlayer) return;
+  }
+
+  megaState.boards[mi][ci] = megaState.turn;
+
+  const miniWinner = checkWin(megaState.boards[mi]);
+  if(miniWinner){
+    megaState.miniWinner[mi] = miniWinner;
+  } else if(megaState.boards[mi].every(Boolean)){
+    megaState.miniWinner[mi] = 'D';
+  }
+
+  const nextMini = ci;
+  if(megaState.miniWinner[nextMini]){
+    megaState.activeMini = null;
+  } else {
+    megaState.activeMini = nextMini;
+  }
+
+  const bigWinner = checkWin(megaState.miniWinner);
+  if(bigWinner){
+    megaState.over = true;
+    megaState.winner = bigWinner;
+  } else if(megaState.miniWinner.every(v => v)){
+    megaState.over = true;
+    megaState.winner = null;
+  }
+
+  megaState.turn = megaState.turn === 'X' ? 'O' : 'X';
+
+  renderMega();
+  if(mode === 'online' && currentGameId) pushState();
+  scheduleAIMove(300);
+}
+function aiMoveMega(){
+  const S = megaState;
+  if(!S || S.over) return;
+  const me = aiPlayer;
+  if(!me || S.turn !== me) return;
+  const opp = (me === 'X' ? 'O' : 'X');
+
+  const legalBoards = (S.activeMini === null)
+    ? [...Array(9).keys()].filter(b => !S.miniWinner[b])
+    : [S.activeMini];
+
+  const moves = [];
+  for(const b of legalBoards){
+    const board = S.boards[b];
+    if(!board) continue;
+    for(let i=0;i<9;i++){
+      if(!board[i]) moves.push({b,i});
+    }
+  }
+
+  if(!moves.length) return;
+
+  function simulate(board, idx, player){
+    const copy = board.slice();
+    copy[idx] = player;
+    return copy;
+  }
+
+  for(const m of moves){
+    const newBoard = simulate(S.boards[m.b], m.i, me);
+    if(checkWin(newBoard) === me) return megaClick(m.b, m.i, 'ai');
+  }
+
+  for(const m of moves){
+    const newBoard = simulate(S.boards[m.b], m.i, opp);
+    if(checkWin(newBoard) === opp) return megaClick(m.b, m.i, 'ai');
+  }
+
+  const safeMoves = moves.filter(m => {
+    const nextBoard = m.i;
+    if(S.miniWinner[nextBoard]) return true;
+    const board = S.boards[nextBoard];
+    if(!board) return true;
+
+    for(let i=0;i<9;i++){
+      if(!board[i]){
+        const sim = simulate(board, i, opp);
+        if(checkWin(sim) === opp) return false;
+      }
+    }
+    for(let i=0;i<9;i++){
+      if(!board[i]){
+        const sim = simulate(board, i, me);
+        if(checkWin(sim) === me) return false;
+      }
+    }
+    return true;
+  });
+
+  if(safeMoves.length){
+    const m = safeMoves[Math.floor(Math.random()*safeMoves.length)];
+    return megaClick(m.b, m.i, 'ai');
+  }
+
+  const m = moves[Math.floor(Math.random()*moves.length)];
+  return megaClick(m.b, m.i, 'ai');
+}
+
+/* ---------- Dots & Boxes ---------- */
+function startDots(){
+  const cols = Math.max(2, Math.min(8, parseInt(dbColsInput.value)||6));
+  const rows = Math.max(2, Math.min(8, parseInt(dbRowsInput.value)||6));
+  const hEdges = Array(rows).fill(0).map(()=> Array(cols-1).fill(null));
+  const vEdges = Array(rows-1).fill(0).map(()=> Array(cols).fill(null));
+  const boxOwner = Array(rows-1).fill(0).map(()=> Array(cols-1).fill(null));
+  dotsState = { cols, rows, hEdges, vEdges, boxOwner, turn: startingSymbol, scores:{X:0,O:0}, over:false };
+  renderDots();
+  updateStatus();
+  if(mode === 'ai' && aiPlayer === startingSymbol) scheduleAIMove(200);
+}
+function renderDots(){
+  boardContainer.innerHTML = '';
+  if(!dotsState) return;
+  const wrap = document.createElement('div'); wrap.className='dots-wrap';
+  const grid = document.createElement('div'); grid.style.display='inline-block';
+  for(let r=0;r<dotsState.rows;r++){
+    const rowFrag = document.createElement('div'); rowFrag.style.display='flex'; rowFrag.style.alignItems='center';
+    for(let c=0;c<dotsState.cols;c++){
+      const dot = document.createElement('div'); dot.className='dot'; rowFrag.appendChild(dot);
+      if(c<dotsState.cols-1){
+        const hed = document.createElement('div'); hed.className='edge h'; hed.dataset.r=r; hed.dataset.c=c;
+        if(dotsState.hEdges[r][c]) hed.classList.add('claimed', dotsState.hEdges[r][c].toLowerCase());
+        hed.addEventListener('click', ()=> claimHEdge(r,c,'human'));
+        rowFrag.appendChild(hed);
+      }
+    }
+    grid.appendChild(rowFrag);
+    if(r<dotsState.rows-1){
+      const midRow = document.createElement('div'); midRow.style.display='flex'; midRow.style.alignItems='center';
+      for(let c=0;c<dotsState.cols;c++){
+        const ved = document.createElement('div'); ved.className='edge v'; ved.dataset.r=r; ved.dataset.c=c;
+        if(dotsState.vEdges[r][c]) ved.classList.add('claimed', dotsState.vEdges[r][c].toLowerCase());
+        ved.addEventListener('click', ()=> claimVEdge(r,c,'human'));
+        midRow.appendChild(ved);
+        if(c<dotsState.cols-1){
+          const boxWrap = document.createElement('div'); boxWrap.style.position='relative';
+          const box = document.createElement('div'); box.className='box';
+          if(dotsState.boxOwner[r][c]){ box.classList.add('claimed', dotsState.boxOwner[r][c].toLowerCase()); box.textContent = dotsState.boxOwner[r][c]; }
+          boxWrap.appendChild(box);
+          midRow.appendChild(boxWrap);
+        }
+      }
+      grid.appendChild(midRow);
+    }
+  }
+  wrap.appendChild(grid); boardContainer.appendChild(wrap);
+  const totalBoxes = (dotsState.cols-1)*(dotsState.rows-1);
+  const claimed = (dotsState.scores && dotsState.scores.X || 0) + (dotsState.scores && dotsState.scores.O || 0);
+  if(claimed === totalBoxes){ dotsState.over = true;
+    if(dotsState.scores.X > dotsState.scores.O){
+      bigStatus.textContent = 'X wins Dots & Boxes!'; score.X++; updateScores(); showBanner('X wins', 'X has won Dots & Boxes.');
+    }
+    else if(dotsState.scores.O > dotsState.scores.X){
+      bigStatus.textContent = 'O wins Dots & Boxes!'; score.O++; updateScores(); showBanner('O wins', 'O has won Dots & Boxes.');
+    }
+    else { bigStatus.textContent = 'Dots & Boxes: Draw'; showBanner('Draw', 'Dots & Boxes ended in a draw.'); }
+  } else bigStatus.textContent = `${dotsState.turn}'s turn — Boxes: X ${dotsState.scores.X} • O ${dotsState.scores.O}`;
+}
+function claimHEdge(r,c, actor='human'){
+  if(!dotsState || dotsState.over) return;
+  if(dotsState.hEdges[r][c]) return;
+  if(actor === 'human'){
+    if(mode==='ai' && dotsState.turn === aiPlayer) return;
+    if(mode === 'online' && dotsState.turn !== humanSymbol) return;
+  }
+  dotsState.hEdges[r][c] = dotsState.turn;
+  let claimedAny=false;
+  if(r>0 && checkBoxCompleted(r-1,c)){ dotsState.boxOwner[r-1][c]=dotsState.turn; dotsState.scores[dotsState.turn]++; claimedAny=true; }
+  if(r<dotsState.rows-1 && checkBoxCompleted(r,c)){ dotsState.boxOwner[r][c]=dotsState.turn; dotsState.scores[dotsState.turn]++; claimedAny=true; }
+  if(!claimedAny) dotsState.turn = dotsState.turn==='X'?'O':'X';
+  renderDots();
+  if(mode === 'online') pushState();
+  scheduleAIMove(200);
+}
+function claimVEdge(r,c, actor='human'){
+  if(!dotsState || dotsState.over) return;
+  if(dotsState.vEdges[r][c]) return;
+  if(actor === 'human'){
+    if(mode==='ai' && dotsState.turn === aiPlayer) return;
+    if(mode === 'online' && dotsState.turn !== humanSymbol) return;
+  }
+  dotsState.vEdges[r][c] = dotsState.turn;
+  let claimedAny=false;
+  if(c>0 && checkBoxCompleted(r,c-1)){ dotsState.boxOwner[r][c-1]=dotsState.turn; dotsState.scores[dotsState.turn]++; claimedAny=true; }
+  if(c<dotsState.cols-1 && checkBoxCompleted(r,c)){ dotsState.boxOwner[r][c]=dotsState.turn; dotsState.scores[dotsState.turn]++; claimedAny=true; }
+  if(!claimedAny) dotsState.turn = dotsState.turn==='X'?'O':'X';
+  renderDots();
+  if(mode === 'online') pushState();
+  scheduleAIMove(200);
+}
+function checkBoxCompleted(r,c){
+  const top = dotsState.hEdges[r][c];
+  const bottom = dotsState.hEdges[r+1][c];
+  const left = dotsState.vEdges[r][c];
+  const right = dotsState.vEdges[r][c+1];
+  return top && bottom && left && right && !dotsState.boxOwner[r][c];
+}
+function aiMoveDots(){
+  if(!dotsState || dotsState.over) return;
+  if(!aiPlayer || dotsState.turn !== aiPlayer) return;
+
+  for(let r=0;r<dotsState.rows-1;r++){
+    for(let c=0;c<dotsState.cols-1;c++){
+      if(!dotsState.boxOwner[r][c]){
+        const edges = [
+          dotsState.hEdges[r][c],
+          dotsState.hEdges[r+1][c],
+          dotsState.vEdges[r][c],
+          dotsState.vEdges[r][c+1]
+        ];
+        const missing = edges.filter(e => !e).length;
+        if(missing === 1){
+          if(!dotsState.hEdges[r][c]) return claimHEdge(r,c,'ai');
+          if(!dotsState.hEdges[r+1][c]) return claimHEdge(r+1,c,'ai');
+          if(!dotsState.vEdges[r][c]) return claimVEdge(r,c,'ai');
+          if(!dotsState.vEdges[r][c+1]) return claimVEdge(r,c+1,'ai');
+        }
+      }
+    }
+  }
+
+  function isDangerHEdge(r,c){
+    let danger = 0;
+    if(r>0){
+      const edges = [
+        dotsState.hEdges[r-1][c],
+        dotsState.hEdges[r][c],
+        dotsState.vEdges[r-1][c],
+        dotsState.vEdges[r-1][c+1]
+      ];
+      if(edges.filter(e=>!e).length === 2) danger++;
+    }
+    if(r<dotsState.rows-1){
+      const edges = [
+        dotsState.hEdges[r][c],
+        dotsState.hEdges[r+1][c],
+        dotsState.vEdges[r][c],
+        dotsState.vEdges[r][c+1]
+      ];
+      if(edges.filter(e=>!e).length === 2) danger++;
+    }
+    return danger > 0;
+  }
+
+  function isDangerVEdge(r,c){
+    let danger = 0;
+    if(c>0){
+      const edges = [
+        dotsState.vEdges[r][c-1],
+        dotsState.vEdges[r][c],
+        dotsState.hEdges[r][c-1],
+        dotsState.hEdges[r+1][c-1]
+      ];
+      if(edges.filter(e=>!e).length === 2) danger++;
+    }
+    if(c<dotsState.cols-1){
+      const edges = [
+        dotsState.vEdges[r][c],
+        dotsState.vEdges[r][c+1],
+        dotsState.hEdges[r][c],
+        dotsState.hEdges[r+1][c]
+      ];
+      if(edges.filter(e=>!e).length === 2) danger++;
+    }
+    return danger > 0;
+  }
+
+  const safe = [];
+
+  for(let r=0;r<dotsState.rows;r++){
+    for(let c=0;c<dotsState.cols-1;c++){
+      if(!dotsState.hEdges[r][c] && !isDangerHEdge(r,c))
+        safe.push({type:'h',r,c});
+    }
+  }
+  for(let r=0;r<dotsState.rows-1;r++){
+    for(let c=0;c<dotsState.cols;c++){
+      if(!dotsState.vEdges[r][c] && !isDangerVEdge(r,c))
+        safe.push({type:'v',r,c});
+    }
+  }
+
+  if(safe.length){
+    const m = safe[Math.floor(Math.random()*safe.length)];
+    return m.type==='h' ? claimHEdge(m.r,m.c,'ai') : claimVEdge(m.r,m.c,'ai');
+  }
+
+  const all = [];
+  for(let r=0;r<dotsState.rows;r++)
+    for(let c=0;c<dotsState.cols-1;c++)
+      if(!dotsState.hEdges[r][c]) all.push({type:'h',r,c});
+
+  for(let r=0;r<dotsState.rows-1;r++)
+    for(let c=0;c<dotsState.cols;c++)
+      if(!dotsState.vEdges[r][c]) all.push({type:'v',r,c});
+
+  const m = all[Math.floor(Math.random()*all.length)];
+  return m.type==='h' ? claimHEdge(m.r,m.c,'ai') : claimVEdge(m.r,m.c,'ai');
+}
+
+/* ---------- Battleships (healthy implementation) ---------- */
+function createEmptyGrid(n){
+  const grid = [];
+  for(let r=0;r<n;r++){
+    const row = [];
+    for(let c=0;c<n;c++){
+      row.push({state:'empty'});
+    }
+    grid.push(row);
+  }
+  return grid;
+}
+function normalizeBattleshipState(s){
+  if(!s || typeof s !== 'object') s = {};
+  if(!Array.isArray(s.gridX) || s.gridX.length !== B_SIZE) s.gridX = createEmptyGrid(B_SIZE);
+  else {
+    for(let r=0;r<B_SIZE;r++){
+      if(!Array.isArray(s.gridX[r]) || s.gridX[r].length !== B_SIZE) s.gridX[r] = Array.from({length:B_SIZE}, ()=>({state:'empty'}));
+      else {
+        for(let c=0;c<B_SIZE;c++){
+          if(!s.gridX[r][c] || typeof s.gridX[r][c] !== 'object') s.gridX[r][c] = {state:'empty'};
+          if(typeof s.gridX[r][c].state !== 'string') s.gridX[r][c].state = 'empty';
+        }
+      }
+    }
+  }
+  if(!Array.isArray(s.gridO) || s.gridO.length !== B_SIZE) s.gridO = createEmptyGrid(B_SIZE);
+  else {
+    for(let r=0;r<B_SIZE;r++){
+      if(!Array.isArray(s.gridO[r]) || s.gridO[r].length !== B_SIZE) s.gridO[r] = Array.from({length:B_SIZE}, ()=>({state:'empty'}));
+      else {
+        for(let c=0;c<B_SIZE;c++){
+          if(!s.gridO[r][c] || typeof s.gridO[r][c] !== 'object') s.gridO[r][c] = {state:'empty'};
+          if(typeof s.gridO[r][c].state !== 'string') s.gridO[r][c].state = 'empty';
+        }
+      }
+    }
+  }
+  s.shipsX = Array.isArray(s.shipsX) ? s.shipsX : [];
+  s.shipsO = Array.isArray(s.shipsO) ? s.shipsO : [];
+  s.placing = !!s.placing;
+  s.placingPlayer = s.placingPlayer || 'X';
+  s.currentShipIndex = Number.isFinite(Number(s.currentShipIndex)) ? Number(s.currentShipIndex) : 0;
+  s.turn = s.turn || startingSymbol || 'X';
+  s.over = !!s.over;
+  s.aiMemory = s.aiMemory || {hits:[], mode:'hunt', direction:null};
+  return s;
+}
+function canPlace(grid,r,c,len,dir){
+  if(dir==='h'){
+    if(c+len> B_SIZE) return false;
+    for(let i=0;i<len;i++) if(grid[r][c+i].state==='ship') return false;
+  } else {
+    if(r+len> B_SIZE) return false;
+    for(let i=0;i<len;i++) if(grid[r+i][c].state==='ship') return false;
+  }
+  return true;
+}
+function placeShipsRandom(grid, shipsArr){
+  shipsArr.length = 0;
+  for(const ship of SHIPS){
+    const len = ship.len;
+    let placed = false;
+    let attempts = 0;
+    while(!placed && attempts < 500){
+      attempts++;
+      const dir = Math.random() < 0.5 ? 'h' : 'v';
+      const r = Math.floor(Math.random() * B_SIZE);
+      const c = Math.floor(Math.random() * B_SIZE);
+      if(canPlace(grid, r, c, len, dir)){
+        const coords = [];
+        for(let i=0;i<len;i++){
+          const rr = dir === 'h' ? r : r+i;
+          const cc = dir === 'h' ? c+i : c;
+          grid[rr][cc].state = 'ship';
+          coords.push([rr,cc]);
+        }
+        shipsArr.push({coords, hits:0, len});
+        placed = true;
+      }
+    }
+  }
+}
+function startBattleship(){
+  hideTurnScreen();
+  hideOrientPanel();
+  pendingPlacement = null;
+
+  battleState = {
+    aiMemory: { hits: [], mode: 'hunt', direction: null },
+    gridX: createEmptyGrid(B_SIZE),
+    gridO: createEmptyGrid(B_SIZE),
+    shipsX: [],
+    shipsO: [],
+    turn: startingSymbol,
+    over:false,
+    placing:true,
+    placingPlayer:'X',
+    currentShipIndex:0,
+    aiMode: mode==='ai'
+  };
+
+  renderBattleshipPlacement();
+  updateStatus();
+}
+function renderBattleshipPlacement(){
+  if(!battleState || !battleState.placing) return;
+
+  boardContainer.innerHTML = '';
+
+  // ONLINE MODE: Only the player whose ships are being placed sees the grid.
+  if (mode === 'online') {
+    const me = humanSymbol;         // 'X' for host, 'O' for guest
+    const placingPlayer = battleState.placingPlayer; // 'X' or 'O'
+
+    // If it's not my placement turn, just show a waiting message.
+    if (placingPlayer !== me) {
+      const wrap = document.createElement('div');
+      const info = document.createElement('div');
+      info.className = 'battleship-info';
+      info.textContent = `${placingPlayer} is placing ships. Please wait...`;
+      wrap.appendChild(info);
+      boardContainer.appendChild(wrap);
+      return;
+    }
+    // If it *is* my turn, fall through to the normal placement UI below.
+  }
+
+  const wrap = document.createElement('div');
+
+  const info = document.createElement('div');
+  info.className = 'battleship-info';
+  const idx = battleState.currentShipIndex;
+  const placingPlayer = battleState.placingPlayer;
+
+  const title = document.createElement('div');
+  title.className = 'small';
+  title.textContent = `${placingPlayer}: Place your ${SHIP_NAMES[idx]}`;
+  info.appendChild(title);
+
+  const note = document.createElement('div');
+  note.className = 'small';
+  note.style.marginTop = '6px';
+  note.textContent = 'Click a starting cell, then choose orientation from the panel.';
+  info.appendChild(note);
+
+  wrap.appendChild(info);
+
+  const gridWrapper = document.createElement('div');
+  gridWrapper.className = 'battleship-grid-wrapper';
+  const label = document.createElement('div');
+  label.className = 'battleship-grid-label';
+  label.textContent = `${placingPlayer}'s Ships`;
+  gridWrapper.appendChild(label);
+
+  const gridEl = document.createElement('div');
+  gridEl.className = 'battleship-grid';
+
+  const grid = placingPlayer === 'X' ? battleState.gridX : battleState.gridO;
+
+  for(let r=0;r<B_SIZE;r++){
+    for(let c=0;c<B_SIZE;c++){
+      const cell = document.createElement('div');
+      cell.className = 'cell-b';
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+      const state = grid[r][c].state;
+      if(state==='ship') cell.classList.add('ship');
+      cell.addEventListener('click', ()=> handlePlacementClick(r,c));
+      gridEl.appendChild(cell);
+    }
+  }
+
+  gridWrapper.appendChild(gridEl);
+  wrap.appendChild(gridWrapper);
+  boardContainer.appendChild(wrap);
+}
+function handlePlacementClick(r, c){
+  if(!battleState || !battleState.placing) return;
+  const idx = battleState.currentShipIndex;
+  const len = SHIPS[idx].len;
+  const player = battleState.placingPlayer;
+  const grid = player === 'X' ? battleState.gridX : battleState.gridO;
+
+  const fitsH = canPlace(grid, r, c, len, 'h');
+  const fitsV = canPlace(grid, r, c, len, 'v');
+
+  if(!fitsH && !fitsV){
+    alert("Ship doesn't fit here.");
+    return;
+  }
+
+  pendingPlacement = {r, c, len, shipIndex: idx, player};
+  const shipNameText = `${player}: ${SHIP_NAMES[idx]} at (${r+1}, ${c+1})`;
+  try {
+    showOrientPanel(shipNameText);
+    debugLog('showOrientPanel invoked');
+  } catch (e) {
+    console.error('Error calling showOrientPanel:', e);
+  }
+}
+function commitPlacement(orientation){
+  if(!pendingPlacement || !battleState) return;
+
+  const {r, c, len, shipIndex, player} = pendingPlacement;
+  const grid = player === 'X' ? battleState.gridX : battleState.gridO;
+  const ships = player === 'X' ? battleState.shipsX : battleState.shipsO;
+
+  const coords = [];
+
+  if(orientation === 'h'){
+    for(let i=0;i<len;i++){
+      grid[r][c+i].state = 'ship';
+      coords.push([r, c+i]);
+    }
+  } else {
+    for(let i=0;i<len;i++){
+      grid[r+i][c].state = 'ship';
+      coords.push([r+i, c]);
+    }
+  }
+
+  ships.push({coords, len, hits: 0});
+
+  battleState.currentShipIndex++;
+
+  if(battleState.currentShipIndex >= SHIPS.length){
+    finishPlacementPhase();
+  } else {
+    renderBattleshipPlacement();
+  }
+  pendingPlacement = null;
+
+  if(mode === 'online') pushState();
+}
+function finishPlacementPhase(){
+  // LOCAL: already working – X places, then O, then play
+  if(mode === 'local' && battleState.placingPlayer === 'X'){
+    battleState.placingPlayer = 'O';
+    battleState.currentShipIndex = 0;
+    pendingPlacement = null;
+    showTurnScreenFor('O', "Pass to Player O. Tap to place O's ships.");
+    return;
+  }
+
+  // AI: X places (human), AI places automatically, then play
+  if(mode === 'ai' && battleState.placingPlayer === 'X'){
+    placeShipsRandom(battleState.gridO, battleState.shipsO);
+    battleState.placing = false;
+    battleState.placingPlayer = null;
+    pendingPlacement = null;
+    renderBattleship();
+
+    if(battleState.turn === aiPlayer){
+      scheduleAIMove(300);
+    }
+    return;
+  }
+
+  // ONLINE: X places, then O places; only when both done do we start the game.
+  if (mode === 'online') {
+    if (battleState.placingPlayer === 'X') {
+      // X finished; now it's O's turn to place.
+      battleState.placingPlayer = 'O';
+      battleState.currentShipIndex = 0;
+      pendingPlacement = null;
+      renderBattleshipPlacement();
+      pushState();
+      return;
+    } else if (battleState.placingPlayer === 'O') {
+      // O finished; both players have placed their ships.
+      battleState.placing = false;
+      battleState.placingPlayer = null;
+      pendingPlacement = null;
+      renderBattleship();
+      pushState();
+      return;
+    }
+  }
+
+  // Fallback (covers the case where placingPlayer is already null)
+  battleState.placing = false;
+  battleState.placingPlayer = null;
+  pendingPlacement = null;
+
+  if(mode === 'local'){
+    showTurnScreenFor(battleState.turn, `${battleState.turn}'s turn to fire. Pass the device and tap to continue.`);
+  }
+
+  renderBattleship();
+
+  if(mode === 'ai' && battleState.turn === aiPlayer){
+    scheduleAIMove(300);
+  }
+  if(mode === 'online') pushState();
+}
+function renderBattleship(){
+  if(!battleState) return;
+  if(battleState.placing){
+    renderBattleshipPlacement();
+    return;
+  }
+
+  boardContainer.innerHTML = '';
+  const wrap = document.createElement('div');
+
+  // WHOSE PERSPECTIVE?
+  let viewPlayer;     // 'X' or 'O' whose board we are *viewing as "me"*.
+  let turnLabel;      // Text for "whose turn" line.
+
+  if (mode === 'online') {
+    // ONLINE: always from my perspective
+    viewPlayer = humanSymbol;         // 'X' for host, 'O' for guest
+    turnLabel = `${battleState.turn}'s turn`;
+  } else {
+    // LOCAL / AI: keep original behaviour
+    viewPlayer = battleState.turn;
+    turnLabel = `${battleState.turn}'s turn`;
+  }
+
+  const ownGrid = viewPlayer === 'X' ? battleState.gridX : battleState.gridO;
+  const ownShips = viewPlayer === 'X' ? battleState.shipsX : battleState.shipsO;
+  const oppGrid = viewPlayer === 'X' ? battleState.gridO : battleState.gridX;
+  const oppShips = viewPlayer === 'X' ? battleState.shipsO : battleState.shipsX;
+
+  const shipInfo = document.createElement('div'); shipInfo.className='battleship-info';
+  const infoTitle = document.createElement('div'); infoTitle.className='small'; infoTitle.style.marginBottom='6px';
+  infoTitle.textContent = `${turnLabel} • Both players have ${SHIP_NAMES.length} ships each`;
+  shipInfo.appendChild(infoTitle);
+
+  const shipList = document.createElement('div'); shipList.className='ship-list';
+  SHIP_NAMES.forEach((name) => {
+    const shipItem = document.createElement('div'); shipItem.className='ship-item';
+    shipItem.textContent = name;
+    shipList.appendChild(shipItem);
+  });
+  shipInfo.appendChild(shipList);
+
+  const ownSunk = ownShips.filter(s => (s.hits || 0) >= s.len).length;
+  const oppSunk = oppShips.filter(s => (s.hits || 0) >= s.len).length;
+  const statusLine = document.createElement('div'); statusLine.className='small'; statusLine.style.marginTop='8px';
+  statusLine.textContent = `Your ships sunk: ${ownSunk}/${SHIP_NAMES.length} • Enemy ships sunk: ${oppSunk}/${SHIP_NAMES.length}`;
+  shipInfo.appendChild(statusLine);
+
+  wrap.appendChild(shipInfo);
+
+  const gridsContainer = document.createElement('div'); gridsContainer.className='battleship-grids';
+
+  // --- Own board (my ships) ---
+  const playerWrapper = document.createElement('div'); playerWrapper.className='battleship-grid-wrapper';
+  const playerLabel = document.createElement('div'); playerLabel.className='battleship-grid-label';
+  playerLabel.textContent = `${viewPlayer}'s Ships`;
+  playerWrapper.appendChild(playerLabel);
+
+  const ownGridEl = document.createElement('div');
+  ownGridEl.className = 'battleship-grid';
+
+  for(let r=0;r<B_SIZE;r++){
+    for(let c=0;c<B_SIZE;c++){
+      const cell = document.createElement('div');
+      cell.className = 'cell-b';
+      const state = ownGrid[r][c].state;
+
+      if(state === 'ship') cell.classList.add('ship');
+      if(state === 'hit') cell.classList.add('hit');
+      if(state === 'miss') cell.classList.add('miss');
+
+      ownGridEl.appendChild(cell);
+    }
+  }
+  playerWrapper.appendChild(ownGridEl);
+  gridsContainer.appendChild(playerWrapper);
+
+  // --- Enemy board (where I shoot) ---
+  const enemyWrapper = document.createElement('div'); enemyWrapper.className='battleship-grid-wrapper';
+  const enemyLabel = document.createElement('div'); enemyLabel.className='battleship-grid-label';
+  enemyLabel.textContent = 'Enemy Waters (Click to Fire)';
+  enemyWrapper.appendChild(enemyLabel);
+  const enemyGridEl = document.createElement('div'); enemyGridEl.className='battleship-grid';
+
+  for(let r=0;r<B_SIZE;r++){
+    for(let c=0;c<B_SIZE;c++){
+      const cell = document.createElement('div'); cell.className='cell-b';
+      cell.dataset.r=r; cell.dataset.c=c;
+      const state = oppGrid[r][c].state;
+      if(state==='hit') {
+        const ship = findShipAt(oppShips, r, c);
+        if(ship && ship.hits < ship.len) {
+          cell.classList.add('damaged');
+        } else {
+          cell.classList.add('sunk');
+        }
+      }
+      else if(state==='miss') cell.classList.add('miss');
+
+      // Firing rules:
+      cell.addEventListener('click', ()=> fireAt(r,c,'human'));
+      enemyGridEl.appendChild(cell);
+    }
+  }
+  enemyWrapper.appendChild(enemyGridEl);
+  gridsContainer.appendChild(enemyWrapper);
+
+  wrap.appendChild(gridsContainer);
+  boardContainer.appendChild(wrap);
+}
+function findShipAt(ships, r, c){
+  return ships.find(s => s.coords.some(([rr,cc]) => rr===r && cc===c));
+}
+function fireAt(r, c, actor='human'){
+  if(!battleState || battleState.over || battleState.placing) return;
+
+  if(actor === 'human'){
+    if(mode==='ai' && battleState.turn === aiPlayer) return;
+    if(mode === 'online' && battleState.turn !== humanSymbol) return;
+  }
+
+  const turn = battleState.turn;
+  const targetGrid = turn === 'X' ? battleState.gridO : battleState.gridX;
+  const targetShips = turn === 'X' ? battleState.shipsO : battleState.shipsX;
+
+  const cell = (targetGrid && targetGrid[r] && targetGrid[r][c]) ? targetGrid[r][c] : null;
+  if(!cell || cell.state === 'hit' || cell.state === 'miss') return;
+
+  if(cell.state === 'ship'){
+    cell.state = 'hit';
+    for(const s of targetShips){
+      for(const [rr,cc] of s.coords){
+        if(rr===r && cc===c){
+          s.hits = (s.hits||0) + 1;
+        }
+      }
+    }
+  } else {
+    cell.state = 'miss';
+  }
+
+  const allSunk = targetShips.length > 0 && targetShips.every(s => (s.hits||0) >= s.len);
+  if(allSunk){
+    battleState.over = true;
+    bigStatus.textContent = `${turn} wins Battleships!`;
+    score[turn]++; updateScores();
+    showBanner(`${turn} wins`, `${turn} has sunk all ships.`);
+    renderBattleship();
+    if(mode === 'online') pushState();
+    return;
+  }
+
+  if(actor === 'human'){
+    renderBattleship();
+    battleState.turn = (turn === 'X' ? 'O' : 'X');
+
+    if(mode === 'local'){
+      showTurnScreenFor(battleState.turn, `${battleState.turn}'s turn to fire. Pass the device, then tap to continue.`);
+      return;
+    }
+
+    if(mode === 'ai'){
+      scheduleAIMove(300);
+      return;
+    }
+
+    if(mode === 'online') pushState();
+    return;
+  }
+
+  if(actor === 'ai'){
+    battleState.turn = (turn === 'X' ? 'O' : 'X');
+    renderBattleship();
+    if(mode === 'online') pushState();
+    return;
+  }
+}
+function aiFire(){
+  if(!battleState || battleState.over || battleState.placing) return;
+  if(!aiPlayer || battleState.turn !== aiPlayer) return;
+
+  const mem = battleState.aiMemory;
+  const oppGrid = aiPlayer === 'X' ? battleState.gridO : battleState.gridX;
+
+  function valid(r,c){
+    return r>=0 && r<B_SIZE && c>=0 && c<B_SIZE;
+  }
+
+  function randomShot(){
+    const choices=[];
+    for(let r=0;r<B_SIZE;r++)
+      for(let c=0;c<B_SIZE;c++){
+        const st = oppGrid[r][c].state;
+        if(st==='empty' || st==='ship') choices.push([r,c]);
+      }
+    if(!choices.length) return null;
+    return choices[Math.floor(Math.random()*choices.length)];
+  }
+
+  if(mem.mode === 'hunt'){
+    const shot = randomShot();
+    if(!shot) return;
+    const [r,c] = shot;
+    const before = oppGrid[r][c].state;
+    fireAt(r,c,'ai');
+
+    if(before === 'ship'){
+      mem.hits = [{r,c}];
+      mem.mode = 'target';
+      mem.direction = null;
+    }
+    return;
+  }
+
+  if(mem.hits.length === 1){
+    const {r,c} = mem.hits[0];
+    const dirs = [[r-1,c],[r+1,c],[r,c-1],[r,c+1]];
+    for(const [rr,cc] of dirs){
+      if(valid(rr,cc)){
+        const st = oppGrid[rr][cc].state;
+        if(st==='empty' || st==='ship'){
+          const before = st;
+          fireAt(rr,cc,'ai');
+          if(before === 'ship'){
+            mem.hits.push({r:rr,c:cc});
+            mem.direction = (rr===r ? 'h' : 'v');
+          }
+          return;
+        }
+      }
+    }
+    mem.mode = 'hunt';
+    return aiFire();
+  }
+
+  const dir = mem.direction;
+  const sorted = mem.hits.slice().sort((a,b)=> dir==='h' ? a.c-b.c : a.r-b.r);
+  const first = sorted[0];
+  const last = sorted[sorted.length-1];
+
+  const forward = dir==='h' ? [last.r, last.c+1] : [last.r+1, last.c];
+  const backward = dir==='h' ? [first.r, first.c-1] : [first.r-1, first.c];
+
+  if(valid(...forward)){
+    const st = oppGrid[forward[0]][forward[1]].state;
+    if(st==='empty' || st==='ship'){
+      const before = st;
+      fireAt(forward[0],forward[1],'ai');
+      if(before==='ship') mem.hits.push({r:forward[0],c:forward[1]});
+      return;
+    }
+  }
+
+  if(valid(...backward)){
+    const st = oppGrid[backward[0]][backward[1]].state;
+    if(st==='empty' || st==='ship'){
+      const before = st;
+      fireAt(backward[0],backward[1],'ai');
+      if(before==='ship') mem.hits.push({r:backward[0],c:backward[1]});
+      return;
+    }
+  }
+
+  mem.hits = [];
+  mem.mode = 'hunt';
+  mem.direction = null;
+  return aiFire();
+}
+
+/* ---------- Hangman (healthy implementation) ---------- */
+const hangWords = ["JAVASCRIPT","COMPUTER","BROWSER","FIREBASE","PROGRAM","HANGMAN","DEVELOPER","NETWORK","BATTLESHIP","MEGAGAME"];
+let localHangWord = null;
+function startHangman() {
+  console.log(startingSymbol)
+  console.log(isHost)
+  drawHangman(0);
+  boardContainer.innerHTML = '';
+
+  // LOCAL or ONLINE: chooser must enter the word
+  if (mode === 'local' || mode === 'online') {
+
+    // Determine chooser in online mode
+    let iAmChooser = false;
+
+    if (mode === 'local') {
+      iAmChooser = true; // same device
+    } else {
+      // ONLINE: chooser = startingSymbol player
+      const startingIsHost = (startingSymbol === 'X'); // host is X
+      iAmChooser = (isHost && startingIsHost) || (!isHost && !startingIsHost);
+    }
+
+    hangState = null;
+    localHangWord = null;
+
+    if (iAmChooser) {
+      showChooserWordInput();
+      bigStatus.textContent = 'Enter a secret word';
+    } else {
+      hideChooserWordInput();
+      bigStatus.textContent = 'Waiting for opponent to choose a word...';
+    }
+
+    return;
+  }
+
+  // AI mode: keep your existing random-word behaviour
+  const word = hangWords[Math.floor(Math.random() * hangWords.length)];
+  hangState = {
+    word,
+    revealed: Array(word.length).fill(false),
+    wrong: [],
+    maxWrong: 7,
+    host: mode === 'ai' ? 'ai' : 'system',
+    guesser: 'human',
+    over: false
+  };
+  renderHangman();
+  updateStatus();
+}
+function showChooserWordInput(){
+  hangInputPanel.classList.remove('hidden');
+  hangInputPanel.setAttribute('aria-hidden','false');
+}
+function hideChooserWordInput(){
+  hangInputPanel.classList.add('hidden');
+  hangInputPanel.setAttribute('aria-hidden','true');
+}
+function hideHangInputPanel(){ hideChooserWordInput(); }
+function setHangWordFromInput() {
+  const w = (hangSecretInput.value || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+    .slice(0, 32);
+
+  if (!w) {
+    alert('Enter a valid word (letters only).');
+    return;
+  }
+
+  localHangWord = w;
+
+  // Build local hangState
+  hangState = {
+    word: w,
+    revealed: Array(w.length).fill(false),
+    wrong: [],
+    maxWrong: 7,
+    host: auth.currentUser.uid,
+    publicGuesses: [],
+    maskedWord: "_".repeat(w.length),
+    over: false
+  };
+
+  // ⭐ SEND TO FIRESTORE *BEFORE* ANY UI CHANGES
+  if (mode === 'online' && currentGameId) {
+    const gameRef = doc(db, "games", currentGameId);
+    console.log("this is directly before the firestore hangman push if this runs it has run")
+    updateDoc(gameRef, {
+      state: {
+        maskedWord: "_".repeat(w.length),
+        publicGuesses: [],
+        wrong: [],
+        maxWrong: 7,
+        host: auth.currentUser.uid
+      },
+      
+      status: "active"
+    }).catch(err => console.error("Firestore update failed:", err));
+  }
+
+  // NOW update UI
+  hideChooserWordInput();
+  bigStatus.textContent = "Word chosen. Waiting for guesses...";
+  renderHangman();
+}
+function cancelHangWordInput(){ hideChooserWordInput(); }
+function renderHangman() {
+  boardContainer.innerHTML = '';
+  if (!hangState) return;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'hangman-area';
+
+  let displayWord = '';
+  const wrongCount = hangState.wrong ? hangState.wrong.length : 0;
+drawHangman(wrongCount);
+  if (mode === 'online') {
+    const uid = auth.currentUser.uid;
+    const iAmChooser = (hangState.host === uid);
+
+    if (iAmChooser) {
+      // Chooser sees masked version based on public guesses
+      if (localHangWord) {
+        const guesses = hangState.publicGuesses || [];
+        displayWord = localHangWord
+          .split('')
+          .map(ch => guesses.includes(ch) ? ch : '_')
+          .join(' ');
+      } else {
+        displayWord = ''; // waiting for chooser to set word
+      }
+    } else {
+      // Guesser sees maskedWord from Firestore
+      displayWord = hangState.maskedWord
+        ? hangState.maskedWord.split('').join(' ')
+        : '';
+    }
+
+  } else {
+    // LOCAL + AI modes (unchanged)
+    displayWord = hangState.word
+      .split('')
+      .map((ch, i) => hangState.revealed[i] ? ch : '_')
+      .join(' ');
+  }
+
+  const wordEl = document.createElement('div');
+  wordEl.className = 'word';
+  wordEl.textContent = displayWord;
+  wrap.appendChild(wordEl);
+
+  // LETTER GRID
+  const letters = document.createElement('div');
+  letters.className = 'letters';
+
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('').forEach(l => {
+    const btn = document.createElement('div');
+    btn.className = 'letter';
+    btn.dataset.letter = l;
+
+    // Disable letters already guessed
+    const already =
+      (mode === 'online')
+        ? (hangState.publicGuesses || []).includes(l)
+        : hangState.revealed.some((v, i) => hangState.word[i] === l && v) ||
+          hangState.wrong.includes(l);
+
+    if (already) btn.classList.add('disabled');
+
+    btn.textContent = l;
+    letters.appendChild(btn);
+  });
+
+  wrap.appendChild(letters);
+
+  // INFO LINE
+  const info = document.createElement('div');
+  info.className = 'small';
+  info.style.marginTop = '8px';
+
+  if (mode === 'online') {
+    info.textContent = `Wrong: ${(hangState.wrong || []).join(', ')} • Guesses: ${(hangState.publicGuesses || []).length}`;
+  } else {
+    info.textContent = `Wrong: ${hangState.wrong.join(', ')} • ${hangState.revealed.filter(Boolean).length}/${hangState.word.length} letters revealed`;
+  }
+
+  wrap.appendChild(info);
+  boardContainer.appendChild(wrap);
+}
+function handleHangGuess(letter){
+  if(!hangState || hangState.over) return;
+
+  if (mode === 'online') {
+    const uid = auth.currentUser.uid;
+
+    // Chooser cannot guess
+    if (hangState.host && uid === hangState.host) return;
+
+    // Send guess to Firestore
+    const gameRef = doc(db, "games", currentGameId);
+    const newGuesses = [...(hangState.publicGuesses || []), letter];
+
+    updateDoc(gameRef, {
+        "state.publicGuesses": newGuesses
+    });
+
+    return; // Guesser does NOT reveal letters locally
+}
+  
+
+  if(hangState.revealed.some((v,i)=> hangState.word[i]===letter && v) || hangState.wrong.includes(letter)) return;
+
+  let found = false;
+  for(let i=0;i<hangState.word.length;i++){
+    if(hangState.word[i] === letter){
+      hangState.revealed[i] = true;
+      found = true;
+    }
+  }
+
+  if(!found){
+    hangState.wrong.push(letter);
+    drawHangman(hangState.wrong.length);
+  }
+
+  renderHangman();
+
+  const btn = document.querySelector(`.letter[data-letter="${letter}"]`);
+  if(btn) btn.classList.add('disabled');
+
+  if(hangState.revealed.every(Boolean)){
+    hangState.over = true;
+    bigStatus.textContent = 'Guesser wins Hangman!';
+    showBanner('Guesser wins', `The word was ${hangState.word}.`);
+  } else if(hangState.wrong.length >= hangState.maxWrong){
+    hangState.over = true;
+    bigStatus.textContent = 'Game over — host wins';
+    showBanner('Host wins', `The word was ${hangState.word}.`);
+  } else {
+    bigStatus.textContent = 'Guesser: keep guessing';
+  }
+
+  if(mode === 'online') pushState();
+}
+function drawHangman(stage){
+  const el = document.getElementById("hangmanDrawing");
+  el.textContent = hangmanStages[Math.min(stage, hangmanStages.length - 1)];
+}
+
+// ---------- Online lobby helpers ----------
+async function createLobby(){
+  const initialState = getInitialStateFor(gameType);
+  const id = await createGameDoc(gameType, initialState);
+  currentGameId = id;
+  isHost = true;
+  humanSymbol = 'X';
+  lobbyInfo.textContent = `Lobby created: ${id}`;
+  listenToGame(id);
+}
+async function joinLobby(id){
+  if(!id){ alert('Enter a Lobby ID to join.'); return; }
+  if(mode !== 'online'){ mode = 'online'; modeSelect.value = 'online'; }
+
+  currentGameId = id;
+  isHost = false;
+  humanSymbol = 'O';
+  try {
+    await joinGameDoc(id);
+  } catch(e){
+    console.error('joinGameDoc error', e);
+  }
+  lobbyInfo.textContent = `Joined lobby: ${id}. Waiting for sync…`;
+  listenToGame(id);
+}
+
+/* ---------- Lifecycle ---------- */
+function startNewGame(pushOnline = true){
+  aiPlayer = (mode === 'ai') ? (humanSymbol === 'X' ? 'O' : 'X') : null;
+  if(mode === 'online') aiPlayer = null;
+
+  hideHangInputPanel();
+  hideTurnScreen();
+  hideOrientPanel();
+  pendingPlacement = null;
+
+  if(gameType === 'ttt') startTTT();
+  else if(gameType === 'mega') startMega();
+  else if(gameType === 'dots') startDots();
+  else if(gameType === 'hangman') startHangman();
+  else if(gameType === 'battleship') startBattleship();
+
+  updateStatus();
+  if(gameType !== 'battleship' && mode === 'ai' && aiPlayer === startingSymbol) scheduleAIMove(200);
+
+  if(mode === 'online' && currentGameId && pushOnline){
+    pushState();
+  }
+}
+function resetScores(){ score={X:0,O:0}; updateScores(); }
+
+/* ---------- Hint ---------- */
+function showHint(){
+  if(gameType==='ttt' && tttState && !tttState.over){
+    const idx = tttState.board.findIndex(x=>!x);
+    if(idx>=0){
+      const el = document.querySelector(`.cell[data-index="${idx}"]`);
+      if(el){ el.style.outline='3px solid rgba(6,182,212,0.18)'; setTimeout(()=>el.style.outline='',900); }
+    }
+  } else if(gameType==='dots' && dotsState && !dotsState.over){
+    let found=false;
+    for(let r=0;r<dotsState.rows && !found;r++) for(let c=0;c<dotsState.cols-1 && !found;c++) if(!dotsState.hEdges[r][c]){
+      const el = document.querySelector(`.edge.h[data-r="${r}"][data-c="${c}"]`);
+      if(el){ el.style.boxShadow='0 0 0 4px rgba(6,182,212,0.06)'; setTimeout(()=>el.style.boxShadow='',900); }
+      found=true;
+    }
+    for(let r=0;r<dotsState.rows-1 && !found;r++) for(let c=0;c<dotsState.cols && !found;c++) if(!dotsState.vEdges[r][c]){
+      const el = document.querySelector(`.edge.v[data-r="${r}"][data-c="${c}"]`);
+      if(el){ el.style.boxShadow='0 0 0 4px rgba(6,182,212,0.06)'; setTimeout(()=>el.style.boxShadow='',900); }
+      found=true;
+    }
+  }
+}
+
+/* Toggle hang input visibility depending on game & mode */
+function toggleHangInputVisibility(){
+  // Do NOT auto-hide the panel in hangman.
+  if (gameSelect.value === 'hangman') return;
+
+  // Other games: hide it.
+  hideHangInputPanel();
+}
+
+/* ---------- Init ---------- */
+(async () => {
+  try {
+    await signInAnonymously(auth);
+    console.log("Firebase anonymous sign‑in OK");
+  } catch (err) {
+    console.error("Firebase sign‑in failed:", err);
+  }
+
+  wireEvents();
+  gameType = gameSelect.value;
+  mode = modeSelect.value;
+  aiPlayer = (mode === 'ai') ? (humanSymbol === 'X' ? 'O' : 'X') : null;
+  updateUIForGame();
+  updateScores();
+  startNewGame();
+})();
+</script>
+</body>
+</html>
