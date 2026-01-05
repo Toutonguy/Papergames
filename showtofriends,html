@@ -91,7 +91,7 @@ hr{border:none;border-top:1px solid rgba(255,255,255,0.03);margin:12px 0}
 .turn-screen{
   position:fixed;
   inset:0;
-  background:rgba(15,23,42,0.95);
+  background:rgba(15,23,42,0.1);
   display:flex;
   align-items:center;
   justify-content:center;
