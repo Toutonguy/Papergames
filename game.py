@@ -3,10 +3,20 @@ FUNKY SPACE BLASTER 🚀
 A colorful space game built with Python and PyQt6.
 
 Controls:
-  Arrow Keys / A/D  - Move spaceship
-  Space             - Shoot
-  P                 - Pause/Resume
-  Q / ESC           - Quit
+  Arrow Keys / WASD  - Move spaceship
+  Space              - Shoot
+  P                  - Pause/Resume
+  B                  - Open Buff Shop (buy power-ups with collected stars)
+  Q / ESC            - Quit
+
+Buff Shop:
+  Collect green stars (+5 stars) and gold stars (+20 stars) as currency.
+  Press B to open the shop, then 1-5 to buy:
+    1. Repair Hull  - +1 HP           (30 stars)
+    2. Rapid Fire   - 2x fire rate    (20 stars, 15s)
+    3. Speed Boost  - +3 movement     (15 stars, 15s)
+    4. Spread Shot  - triple bullets  (35 stars, 20s)
+    5. Star Magnet  - auto-collect    (25 stars, 20s)
 """
 
 import sys
@@ -32,6 +42,45 @@ ASTEROID_BASE_SPEED = 1.5
 STAR_SPEED = 1.0
 SPAWN_INTERVAL = 90          # frames between asteroid spawns (decreases with score)
 BULLET_COOLDOWN = 15         # frames between shots
+MAGNET_RADIUS = 130          # pixels — collectibles pulled toward player when magnet active
+
+# ---------------------------------------------------------------------------
+# Buff shop definitions
+# Each buff: id, display name, short label, description, cost (in stars),
+#            timed (bool), duration in frames (0 = instant/one-shot)
+# ---------------------------------------------------------------------------
+SHOP_BUFFS = [
+    {
+        "id": "heal",   "name": "Repair Hull",  "label": "HP+",
+        "desc": "+1 HP (max 3)", "cost": 30,
+        "timed": False, "duration": 0,
+        "color": QColor(80, 255, 100),
+    },
+    {
+        "id": "rapid",  "name": "Rapid Fire",   "label": "FAST",
+        "desc": "2x fire rate\n15 seconds",     "cost": 20,
+        "timed": True,  "duration": 900,
+        "color": QColor(255, 100, 60),
+    },
+    {
+        "id": "speed",  "name": "Speed Boost",  "label": "SPD",
+        "desc": "+3 speed\n15 seconds",         "cost": 15,
+        "timed": True,  "duration": 900,
+        "color": QColor(80, 200, 255),
+    },
+    {
+        "id": "spread", "name": "Spread Shot",  "label": "3x",
+        "desc": "Triple bullets\n20 seconds",   "cost": 35,
+        "timed": True,  "duration": 1200,
+        "color": QColor(200, 100, 255),
+    },
+    {
+        "id": "magnet", "name": "Star Magnet",  "label": "MAG",
+        "desc": "Auto-collect\n20 seconds",     "cost": 25,
+        "timed": True,  "duration": 1200,
+        "color": QColor(255, 200, 40),
+    },
+]
 
 # Colour palette (funky!)
 COL_BG        = QColor(8,    4,   30)
@@ -134,6 +183,8 @@ class Player:
         self.invincible = 0          # frames of invincibility after hit
         self.bullet_cooldown = 0
         self.engine_flicker = 0      # animation frame
+        self.speed_bonus = 0         # extra speed from buff
+        self.bullet_cooldown_div = 1 # 2 = rapid fire
 
     @property
     def rect(self):
@@ -144,8 +195,9 @@ class Player:
     def move(self, dx, dy):
         hw = self.WIDTH  // 2
         hh = self.HEIGHT // 2
-        self.x = max(hw, min(WIDTH  - hw, self.x + dx * PLAYER_SPEED))
-        self.y = max(hh, min(HEIGHT - hh, self.y + dy * PLAYER_SPEED))
+        speed = PLAYER_SPEED + self.speed_bonus
+        self.x = max(hw, min(WIDTH  - hw, self.x + dx * speed))
+        self.y = max(hh, min(HEIGHT - hh, self.y + dy * speed))
 
     def hit(self):
         if self.invincible > 0:
@@ -165,8 +217,16 @@ class Player:
         return self.bullet_cooldown == 0
 
     def shoot(self):
-        self.bullet_cooldown = BULLET_COOLDOWN
+        self.bullet_cooldown = max(1, BULLET_COOLDOWN // self.bullet_cooldown_div)
         return Bullet(self.x, self.y - self.HEIGHT // 2)
+
+    def shoot_angled(self, angle_deg: float) -> "Bullet":
+        """Fire a bullet at angle_deg degrees from straight up (0=up, +right, -left)."""
+        self.bullet_cooldown = max(1, BULLET_COOLDOWN // self.bullet_cooldown_div)
+        rad = math.radians(angle_deg)
+        vx = math.sin(rad) * BULLET_SPEED
+        vy = -math.cos(rad) * BULLET_SPEED
+        return Bullet(self.x, self.y - self.HEIGHT // 2, vx=vx, vy=vy)
 
     def draw(self, painter: QPainter):
         if self.invincible > 0 and (self.invincible // 6) % 2 == 0:
@@ -231,9 +291,11 @@ class Player:
 class Bullet:
     RADIUS = 4
 
-    def __init__(self, x, y):
+    def __init__(self, x, y, vx=0.0, vy=-BULLET_SPEED):
         self.x = float(x)
         self.y = float(y)
+        self.vx = float(vx)
+        self.vy = float(vy)
         self.alive = True
         self.trail = []
 
@@ -241,8 +303,9 @@ class Bullet:
         self.trail.append((self.x, self.y))
         if len(self.trail) > 8:
             self.trail.pop(0)
-        self.y -= BULLET_SPEED
-        if self.y < -10:
+        self.x += self.vx
+        self.y += self.vy
+        if self.y < -10 or self.x < -10 or self.x > WIDTH + 10:
             self.alive = False
 
     def rect(self):
@@ -359,6 +422,7 @@ class Collectible:
         self.kind  = kind   # "green" (+10) or "gold" (+50)
         self.x     = float(random.randint(20, WIDTH - 20))
         self.y     = float(-20)
+        self.vx    = 0.0
         self.vy    = STAR_SPEED * random.uniform(0.8, 1.2)
         self.alive = True
         self.angle = 0.0
@@ -370,7 +434,9 @@ class Collectible:
         self.points = 10 if kind == "green" else 50
 
     def update(self):
+        self.x += self.vx
         self.y += self.vy
+        self.vx *= 0.9   # dampen horizontal drift from magnet between frames
         self.angle = (self.angle + 3) % 360
         self.glow_frame = (self.glow_frame + 1) % 60
         if self.y > HEIGHT + 30:
@@ -459,6 +525,7 @@ class GameWidget(QWidget):
     STATE_PAUSED    = "paused"
     STATE_GAMEOVER  = "gameover"
     STATE_START     = "start"
+    STATE_SHOP      = "shop"
 
     def __init__(self):
         super().__init__()
@@ -485,6 +552,8 @@ class GameWidget(QWidget):
         self.particles: list[Particle] = []
         self.float_texts: list[FloatText] = []
         self.score = 0
+        self.stars = 0            # spendable buff currency
+        self.active_buffs: dict[str, int] = {}   # buff_id -> frames remaining
         self.frame = 0
         self.spawn_timer = 0
         self.collect_timer = 0
@@ -505,16 +574,34 @@ class GameWidget(QWidget):
 
     # ------------------------------------------------------------------
     def _tick(self):
+        if self._state == self.STATE_SHOP:
+            # Game is paused while shopping; just repaint for any animations
+            self.update()
+            return
         if self._state != self.STATE_PLAYING:
             self.update()
             return
 
         self.frame += 1
+        self._buff_tick()
         self._handle_input()
         self._update_objects()
         self._spawn_objects()
         self._check_collisions()
         self.update()   # triggers paintEvent
+
+    # ------------------------------------------------------------------
+    def _buff_tick(self):
+        """Decrement timed buff counters and sync player attributes."""
+        expired = [bid for bid, t in self.active_buffs.items() if t <= 1]
+        for bid in expired:
+            del self.active_buffs[bid]
+        for bid in self.active_buffs:
+            self.active_buffs[bid] -= 1
+
+        # Sync player attributes from active buffs
+        self.player.speed_bonus = 3 if "speed" in self.active_buffs else 0
+        self.player.bullet_cooldown_div = 2 if "rapid" in self.active_buffs else 1
 
     # ------------------------------------------------------------------
     def _handle_input(self):
@@ -532,8 +619,21 @@ class GameWidget(QWidget):
             self.player.move(dx, dy)
 
         if Qt.Key.Key_Space in keys and self.player.can_shoot():
-            bullet = self.player.shoot()
-            self.bullets.append(bullet)
+            if "spread" in self.active_buffs:
+                # Fire three angled bullets; only the first call sets the cooldown
+                self.bullets.append(self.player.shoot_angled(0))
+                self.bullets.append(Bullet(
+                    self.player.x, self.player.y - self.player.HEIGHT // 2,
+                    vx=math.sin(math.radians(-15)) * BULLET_SPEED,
+                    vy=-math.cos(math.radians(-15)) * BULLET_SPEED,
+                ))
+                self.bullets.append(Bullet(
+                    self.player.x, self.player.y - self.player.HEIGHT // 2,
+                    vx=math.sin(math.radians(15)) * BULLET_SPEED,
+                    vy=-math.cos(math.radians(15)) * BULLET_SPEED,
+                ))
+            else:
+                self.bullets.append(self.player.shoot())
 
     # ------------------------------------------------------------------
     def _update_objects(self):
@@ -546,6 +646,17 @@ class GameWidget(QWidget):
         for a in self.asteroids:
             a.update()
         self.asteroids = [a for a in self.asteroids if a.alive]
+
+        # Magnet: pull nearby collectibles toward the player
+        if "magnet" in self.active_buffs:
+            for col in self.collectibles:
+                cdx = self.player.x - col.x
+                cdy = self.player.y - col.y
+                dist = math.hypot(cdx, cdy)
+                if 0 < dist < MAGNET_RADIUS:
+                    pull = 3.5 * (1.0 - dist / MAGNET_RADIUS)
+                    col.vx += cdx / dist * pull
+                    col.vy += cdy / dist * pull
 
         for c in self.collectibles:
             c.update()
@@ -614,6 +725,8 @@ class GameWidget(QWidget):
             if pr.intersects(col.rect()):
                 col.alive = False
                 self.score += col.points
+                star_earn = 5 if col.kind == "green" else 20
+                self.stars += star_earn
                 self.float_texts.append(FloatText(
                     col.x, col.y,
                     f"+{col.points}",
@@ -628,6 +741,28 @@ class GameWidget(QWidget):
         self.hi_score = max(self.hi_score, self.score)
 
     # ------------------------------------------------------------------
+    def _buy_buff(self, index: int):
+        if index >= len(SHOP_BUFFS):
+            return
+        buff = SHOP_BUFFS[index]
+        if self.stars < buff["cost"]:
+            return   # can't afford it
+
+        # Special case: heal is instant, not a timer buff
+        if buff["id"] == "heal":
+            if self.player.hp >= Player.MAX_HP:
+                return   # already full HP, don't charge
+            self.player.hp = min(Player.MAX_HP, self.player.hp + 1)
+        else:
+            # Stack duration if buff already active
+            frames = buff["duration"]
+            self.active_buffs[buff["id"]] = (
+                self.active_buffs.get(buff["id"], 0) + frames
+            )
+
+        self.stars -= buff["cost"]
+
+    # ------------------------------------------------------------------
     # Key handling
     # ------------------------------------------------------------------
     def keyPressEvent(self, event):
@@ -640,8 +775,18 @@ class GameWidget(QWidget):
             elif self._state == self.STATE_PAUSED:
                 self._state = self.STATE_PLAYING
 
+        elif key == Qt.Key.Key_B:
+            if self._state == self.STATE_PLAYING:
+                self._state = self.STATE_SHOP
+            elif self._state == self.STATE_SHOP:
+                self._state = self.STATE_PLAYING
+
         elif key in (Qt.Key.Key_Q, Qt.Key.Key_Escape):
-            QApplication.quit()
+            if self._state == self.STATE_SHOP:
+                # Close shop instead of quitting
+                self._state = self.STATE_PLAYING
+            else:
+                QApplication.quit()
 
         elif key == Qt.Key.Key_Return or key == Qt.Key.Key_Space:
             if self._state in (self.STATE_START, self.STATE_GAMEOVER):
@@ -649,6 +794,15 @@ class GameWidget(QWidget):
                 self._reset_game()
                 # Consume Space so it doesn't trigger a shot on the first frame
                 self._keys.discard(Qt.Key.Key_Space)
+
+        # Number keys 1-5: buy buff in shop
+        elif self._state == self.STATE_SHOP:
+            num_map = {
+                Qt.Key.Key_1: 0, Qt.Key.Key_2: 1, Qt.Key.Key_3: 2,
+                Qt.Key.Key_4: 3, Qt.Key.Key_5: 4,
+            }
+            if key in num_map:
+                self._buy_buff(num_map[key])
 
     def keyReleaseEvent(self, event):
         self._keys.discard(event.key())
@@ -671,6 +825,10 @@ class GameWidget(QWidget):
         elif self._state == self.STATE_PAUSED:
             self._draw_game_objects(painter)
             self._draw_pause_screen(painter)
+        elif self._state == self.STATE_SHOP:
+            self._draw_game_objects(painter)
+            self._draw_hud(painter)
+            self._draw_shop_screen(painter)
         else:
             self._draw_game_objects(painter)
             self._draw_hud(painter)
@@ -730,6 +888,12 @@ class GameWidget(QWidget):
         painter.drawText(QRectF(10, 36, 200, 22), Qt.AlignmentFlag.AlignLeft,
                          f"Best: {self.hi_score}")
 
+        # Star currency
+        painter.setFont(QFont("Arial", 13, QFont.Weight.Bold))
+        painter.setPen(QPen(QColor(255, 220, 40)))
+        painter.drawText(QRectF(10, 58, 200, 22), Qt.AlignmentFlag.AlignLeft,
+                         f"* {self.stars} stars  [B=Shop]")
+
         # Health bar
         bar_x, bar_y, bar_w, bar_h = WIDTH - 170, 10, 150, 18
         painter.setPen(QPen(QColor(80, 80, 100), 1))
@@ -755,8 +919,24 @@ class GameWidget(QWidget):
         painter.drawText(QRectF(WIDTH // 2 - 50, 8, 100, 22),
                          Qt.AlignmentFlag.AlignCenter, diff_txt)
 
-        # Controls hint (top bar)
-        hint = "P=Pause  Q=Quit  Space=Shoot"
+        # Active buff indicators
+        if self.active_buffs:
+            bx = WIDTH - 170
+            by = 36
+            painter.setFont(QFont("Arial", 9, QFont.Weight.Bold))
+            for i, (bid, frames) in enumerate(self.active_buffs.items()):
+                buff_def = next((b for b in SHOP_BUFFS if b["id"] == bid), None)
+                if buff_def is None:
+                    continue
+                secs = math.ceil(frames / FPS)
+                label = f"{buff_def['label']} {secs}s"
+                col = QColor(buff_def["color"])
+                painter.setPen(QPen(col))
+                painter.drawText(QRectF(bx, by + i * 16, 150, 15),
+                                 Qt.AlignmentFlag.AlignLeft, label)
+
+        # Controls hint
+        hint = "Arrows/WASD=Move  Space=Shoot  P=Pause  B=Shop  Q=Quit"
         painter.setPen(QPen(QColor(100, 100, 140)))
         painter.setFont(QFont("Arial", 9))
         painter.drawText(QRectF(0, HEIGHT - 18, WIDTH, 16),
@@ -802,6 +982,7 @@ class GameWidget(QWidget):
             ("Arrow Keys / WASD", "Move"),
             ("Space",             "Shoot"),
             ("P",                 "Pause / Resume"),
+            ("B",                 "Open Buff Shop"),
             ("Q / ESC",           "Quit"),
         ]
         painter.setFont(QFont("Arial", 13))
@@ -815,8 +996,108 @@ class GameWidget(QWidget):
             painter.drawText(QRectF(WIDTH // 2 + 20, row_y, 180, 22),
                              Qt.AlignmentFlag.AlignLeft, action)
 
+    def _draw_shop_screen(self, painter: QPainter):
+        self._draw_overlay(painter, alpha=200)
+
+        # Title
+        painter.setPen(QPen(QColor(255, 220, 40)))
+        painter.setFont(QFont("Arial", 28, QFont.Weight.Bold))
+        painter.drawText(QRectF(0, 20, WIDTH, 40),
+                         Qt.AlignmentFlag.AlignCenter, "* BUFF SHOP *")
+
+        # Star balance
+        painter.setFont(QFont("Arial", 15))
+        painter.setPen(QPen(QColor(200, 255, 180)))
+        painter.drawText(QRectF(0, 58, WIDTH, 26),
+                         Qt.AlignmentFlag.AlignCenter,
+                         f"You have  {self.stars}  stars")
+
+        # Cards
+        card_w, card_h = 136, 180
+        gap = 8
+        total_w = len(SHOP_BUFFS) * card_w + (len(SHOP_BUFFS) - 1) * gap
+        start_x = (WIDTH - total_w) // 2
+        card_y = 100
+
+        for i, buff in enumerate(SHOP_BUFFS):
+            cx = start_x + i * (card_w + gap)
+            can_afford = self.stars >= buff["cost"]
+            is_active  = buff["id"] in self.active_buffs
+            already_max = buff["id"] == "heal" and self.player.hp >= Player.MAX_HP
+
+            # Card background
+            if can_afford and not already_max:
+                bg = QColor(30, 40, 70, 220)
+                border = QColor(buff["color"])
+            else:
+                bg = QColor(20, 20, 30, 180)
+                border = QColor(80, 80, 100)
+
+            painter.setBrush(QBrush(bg))
+            painter.setPen(QPen(border, 2))
+            painter.drawRoundedRect(QRectF(cx, card_y, card_w, card_h), 8, 8)
+
+            # Key number badge
+            painter.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+            painter.setPen(QPen(QColor(255, 255, 255, 180)))
+            painter.drawText(QRectF(cx, card_y + 4, card_w, 18),
+                             Qt.AlignmentFlag.AlignCenter, f"[{i+1}]")
+
+            # Big label / icon
+            lbl_color = QColor(buff["color"]) if can_afford and not already_max \
+                        else QColor(100, 100, 100)
+            painter.setPen(QPen(lbl_color))
+            painter.setFont(QFont("Arial", 22, QFont.Weight.Bold))
+            painter.drawText(QRectF(cx, card_y + 22, card_w, 34),
+                             Qt.AlignmentFlag.AlignCenter, buff["label"])
+
+            # Name
+            painter.setPen(QPen(QColor(220, 220, 255)))
+            painter.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+            painter.drawText(QRectF(cx + 4, card_y + 58, card_w - 8, 18),
+                             Qt.AlignmentFlag.AlignCenter, buff["name"])
+
+            # Description (two lines)
+            painter.setPen(QPen(QColor(160, 160, 200)))
+            painter.setFont(QFont("Arial", 9))
+            desc_lines = buff["desc"].split("\n")
+            for j, line in enumerate(desc_lines):
+                painter.drawText(
+                    QRectF(cx + 4, card_y + 78 + j * 14, card_w - 8, 14),
+                    Qt.AlignmentFlag.AlignCenter, line)
+
+            # Cost
+            cost_color = QColor(255, 220, 40) if can_afford else QColor(180, 60, 60)
+            painter.setPen(QPen(cost_color))
+            painter.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+            painter.drawText(QRectF(cx + 4, card_y + 112, card_w - 8, 20),
+                             Qt.AlignmentFlag.AlignCenter,
+                             f"* {buff['cost']} stars")
+
+            # Status badge
+            if already_max:
+                status, sc = "FULL HP", QColor(100, 100, 100)
+            elif is_active:
+                secs = math.ceil(self.active_buffs[buff["id"]] / FPS)
+                status, sc = f"ACTIVE {secs}s", QColor(80, 255, 120)
+            elif not can_afford:
+                status, sc = "TOO COSTLY", QColor(200, 80, 80)
+            else:
+                status, sc = "PRESS  " + str(i + 1), QColor(buff["color"])
+
+            painter.setPen(QPen(sc))
+            painter.setFont(QFont("Arial", 9, QFont.Weight.Bold))
+            painter.drawText(QRectF(cx + 4, card_y + 148, card_w - 8, 26),
+                             Qt.AlignmentFlag.AlignCenter, status)
+
+        # Close hint
+        painter.setPen(QPen(QColor(140, 140, 180)))
+        painter.setFont(QFont("Arial", 11))
+        painter.drawText(QRectF(0, HEIGHT - 40, WIDTH, 26),
+                         Qt.AlignmentFlag.AlignCenter,
+                         "B or ESC to close shop  —  number keys 1-5 to buy")
+
     def _draw_pause_screen(self, painter: QPainter):
-        self._draw_overlay(painter, alpha=140)
         self._draw_title_text(painter,
                               "⏸  PAUSED",
                               "Press P to resume",
