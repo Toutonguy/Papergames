@@ -351,7 +351,11 @@ class Asteroid:
 # ---------------------------------------------------------------------------
 class Collectible:
     """Stars that the player can fly over for points."""
+    VALID_KINDS = ("green", "gold")
+
     def __init__(self, kind="green"):
+        if kind not in self.VALID_KINDS:
+            raise ValueError(f"kind must be one of {self.VALID_KINDS}, got {kind!r}")
         self.kind  = kind   # "green" (+10) or "gold" (+50)
         self.x     = float(random.randint(20, WIDTH - 20))
         self.y     = float(-20)
@@ -474,17 +478,17 @@ class GameWidget(QWidget):
 
     # ------------------------------------------------------------------
     def _reset_game(self):
-        self.player      = Player()
-        self.bullets     : list[Bullet]      = []
-        self.asteroids   : list[Asteroid]    = []
+        self.player: Player = Player()
+        self.bullets: list[Bullet] = []
+        self.asteroids: list[Asteroid] = []
         self.collectibles: list[Collectible] = []
-        self.particles   : list[Particle]    = []
-        self.float_texts : list[FloatText]   = []
-        self.score       = 0
-        self.frame       = 0
+        self.particles: list[Particle] = []
+        self.float_texts: list[FloatText] = []
+        self.score = 0
+        self.frame = 0
         self.spawn_timer = 0
         self.collect_timer = 0
-        self.hi_score    = getattr(self, 'hi_score', 0)
+        self.hi_score = getattr(self, 'hi_score', 0)
 
     # ------------------------------------------------------------------
     @property
@@ -643,6 +647,8 @@ class GameWidget(QWidget):
             if self._state in (self.STATE_START, self.STATE_GAMEOVER):
                 self._state = self.STATE_PLAYING
                 self._reset_game()
+                # Consume Space so it doesn't trigger a shot on the first frame
+                self._keys.discard(Qt.Key.Key_Space)
 
     def keyReleaseEvent(self, event):
         self._keys.discard(event.key())
